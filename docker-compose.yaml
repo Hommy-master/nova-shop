@@ -1,19 +1,155 @@
+# ============================================================
+# Nova Shop - 一键部署配置
+# 使用方式：docker compose up -d
+# ============================================================
+
+x-nova-shop-common: &nova-shop-common
+  image: gogoshine/nova-shop:latest
+  #image: gogoshine/nova-shop:sha-190a61f
+  volumes:
+    - /etc/localtime:/etc/localtime:ro   # 挂载主机时区
+    - /etc/timezone:/etc/timezone:ro     # 挂载时区名称
+    - nova-shop-media:/app/media         # 媒体文件持久化
+  environment:
+    # ── 应用核心 ──────────────────────────────────
+    DEBUG: "False"
+    SECRET_KEY: "changeme-replace-with-a-long-random-string"  # 生产环境必须修改！
+    # ── 数据库（自动指向内部 postgres 服务）────────
+    DATABASE_URL: "postgres://saleor:saleor@postgres:5432/saleor"
+    # ── 缓存 & 消息队列（自动指向内部 redis 服务）──
+    CACHE_URL: "redis://redis:6379/0"
+    CELERY_BROKER_URL: "redis://redis:6379/1"
+    # ── 访问控制 ──────────────────────────────────
+    ALLOWED_HOSTS: "localhost,127.0.0.1"        # 生产环境改为实际域名
+    ALLOWED_CLIENT_HOSTS: "localhost,127.0.0.1" # 生产环境改为实际域名
+    ALLOWED_GRAPHQL_ORIGINS: "*"
+    # PUBLIC_URL: "https://api.example.com/"    # 生产环境取消注释并填入域名
+    # ── 邮件 ──────────────────────────────────────
+    DEFAULT_FROM_EMAIL: "noreply@example.com"
+    # EMAIL_URL: "smtp://user:password@smtp.example.com:587/?tls=True"
+    # ── 媒体 & 静态资源 ───────────────────────────
+    MEDIA_URL: "/media/"
+    STATIC_URL: "/static/"
+    # ── 国际化 ────────────────────────────────────
+    DEFAULT_COUNTRY: "CN"
+    DEFAULT_CHANNEL_SLUG: "default-channel"
+    POPULATE_DEFAULTS: "True"
+    # ── 安全 ──────────────────────────────────────
+    HTTP_IP_FILTER_ALLOW_LOOPBACK_IPS: "False"
+    # ── 可选功能 ──────────────────────────────────
+    TIP_URL: ""
+    SENTRY_DSN: ""         # 填入 Sentry DSN 启用错误监控
+    RSA_PRIVATE_KEY: ""    # 填入 RSA 私钥启用 JWT 非对称加密
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
 services:
+  # ──────────────────────────────────────────
+  # Web API 服务
+  # ──────────────────────────────────────────
   nova-shop:
-    image: gogoshine/nova-shop:latest
-    #image: gogoshine/nova-shop:sha-190a61f
+    <<: *nova-shop-common
+    container_name: nova-shop
     ports:
-      - "30000:30000"
-    volumes:
-      - /etc/localtime:/etc/localtime:ro  # 挂载主机时区
-      - /etc/timezone:/etc/timezone:ro    # 挂载时区名称（可选）
-    environment:
-      # 提示URL
-      - TIP_URL=
-    mem_limit: 4G     # 内存限制
-    memswap_limit: 4G # 总内存（物理内存 + Swap）限制
-    cpus: '2.0'       # CPU使用率限制为150%，即容器最多可以使用1.5个完整的CPU核心
-    oom_score_adj: -500  # 调整 OOM 杀手优先级
-    restart: unless-stopped  # 除非手动停止，否则总是重启容器
-    container_name: nova-shop # 这里指容器名称，非必需，不指定时，名称为：<项目名称>-<服务名称>-<序号>
+      - "8000:8000"
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        uvicorn saleor.asgi:application
+          --host=0.0.0.0
+          --port=8000
+          --workers=2
+          --lifespan=off
+          --ws=none
+          --no-server-header
+          --no-access-log
+          --timeout-keep-alive=35
+          --timeout-graceful-shutdown=30
+          --limit-max-requests=10000
+      "
+    mem_limit: 4G
+    memswap_limit: 4G
+    cpus: '2.0'
+    oom_score_adj: -500
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     #entrypoint: ["/bin/sh", "-c", "sleep 10000"]
+
+  # ──────────────────────────────────────────
+  # Celery Worker - 异步任务处理
+  # ──────────────────────────────────────────
+  celery:
+    <<: *nova-shop-common
+    container_name: nova-shop-celery
+    command: celery -A saleor.celeryconf:app worker --loglevel=info --concurrency=2
+    mem_limit: 2G
+    memswap_limit: 2G
+    cpus: '1.0'
+
+  # ──────────────────────────────────────────
+  # Celery Beat - 定时任务调度
+  # ──────────────────────────────────────────
+  celery-beat:
+    <<: *nova-shop-common
+    container_name: nova-shop-celery-beat
+    command: celery -A saleor.celeryconf:app beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    mem_limit: 512M
+    memswap_limit: 512M
+    cpus: '0.5'
+
+  # ──────────────────────────────────────────
+  # PostgreSQL 数据库
+  # ──────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: nova-shop-postgres
+    environment:
+      POSTGRES_USER: "saleor"
+      POSTGRES_PASSWORD: "saleor"  # 生产环境请修改！
+      POSTGRES_DB: "saleor"
+    volumes:
+      - nova-shop-postgres:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saleor -d saleor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 1G
+    memswap_limit: 1G
+    cpus: '1.0'
+
+  # ──────────────────────────────────────────
+  # Redis - 缓存 & 消息队列
+  # ──────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: nova-shop-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - nova-shop-redis:/data
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 512M
+    memswap_limit: 512M
+    cpus: '0.5'
+
+volumes:
+  nova-shop-postgres:    # PostgreSQL 数据持久化
+  nova-shop-redis:       # Redis 数据持久化
+  nova-shop-media:       # 媒体文件持久化
