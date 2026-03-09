@@ -849,14 +849,14 @@ wheels = [
 
 [[package]]
 name = "faker"
-version = "26.3.0"
+version = "40.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "python-dateutil", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tzdata", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/0c/3ef35c3827ab710711c54fd2564e496c7c26c701b72ae32263857896b289/Faker-26.3.0.tar.gz", hash = "sha256:7c10ebdf74aaa0cc4fe6ec6db5a71e8598ec33503524bd4b5f4494785a5670dd", size = 1765030, upload-time = "2024-08-08T15:55:00.843Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/03/14428edc541467c460d363f6e94bee9acc271f3e62470630fc9a647d0cf2/faker-40.8.0.tar.gz", hash = "sha256:936a3c9be6c004433f20aa4d99095df5dec82b8c7ad07459756041f8c1728875", size = 1956493, upload-time = "2026-03-04T16:18:48.161Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/1d/fb374889a8cbe2786a347a6fc80b40b4d7ac607ed40be8bd4babec0d02b0/Faker-26.3.0-py3-none-any.whl", hash = "sha256:97fe1e7e953dd640ca2cd4dfac4db7c4d2432dd1b7a244a3313517707f3b54e9", size = 1802551, upload-time = "2024-08-08T15:54:49.395Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/3b/c6348f1e285e75b069085b18110a4e6325b763a5d35d5e204356fc7c20b3/faker-40.8.0-py3-none-any.whl", hash = "sha256:eb21bdba18f7a8375382eb94fb436fce07046893dc94cb20817d28deb0c3d579", size = 1989124, upload-time = "2026-03-04T16:18:46.45Z" },
 ]
 
 [[package]]
@@ -2689,7 +2689,7 @@ requires-dist = [
     { name = "django-storages", extras = ["google"], specifier = "~=1.11" },
     { name = "django-stubs-ext", specifier = ">=5.1.3,<6" },
     { name = "draftjs-sanitizer", specifier = ">=1.0.0,<2" },
-    { name = "faker", specifier = ">=26.0.0,<27.0" },
+    { name = "faker", specifier = ">=26.0.0,<41.0" },
     { name = "google-cloud-pubsub", specifier = ">=1.7,<3.0" },
     { name = "google-cloud-storage", specifier = ">=2.0.0,<3" },
     { name = "google-i18n-address", specifier = ">=3.1.0,<4" },
