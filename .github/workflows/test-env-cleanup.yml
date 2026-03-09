@@ -1,0 +1,48 @@
+name: TEST-ENV-CLEANUP
+# Build and deploy test instance for every pull request
+
+on:
+  pull_request:
+    types: [closed, unlabeled]
+    branches: ["**"]
+
+jobs:
+  cleanup:
+    name: Remove test environment deployment
+    if: ${{ ((github.event.action == 'unlabeled') && (github.event.label.name == 'test deployment')) || ((github.event.action == 'closed') && contains(github.event.pull_request.labels.*.name, 'test deployment')) }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # needed by aws-actions/configure-aws-credentials
+      contents: read
+      deployments: write
+    steps:
+      - uses: rlespinasse/github-slug-action@c33ff65466c58d57e4d796f88bb1ae0ff26ee453 # v5.2.0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 # v5.0.0
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_TESTENVS_ACCOUNT_ID }}:role/${{ secrets.AWS_TESTENVS_CICD_ROLE_NAME }}
+          aws-region: ${{ vars.AWS_TESTENVS_REGION }}
+
+      - name: Invoke deployment lambda
+        uses: gagoar/invoke-aws-lambda@2ea0b5791eba7a9513ddf0fb7f91aa8f098b6458 # v3.4.0
+        with:
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ env.AWS_SESSION_TOKEN }}
+          REGION: ${{ vars.AWS_TESTENVS_REGION }}
+          FunctionName: test-env-manager
+          Payload: >-
+            {
+              "action": "${{ github.event.action }}",
+              "label": "${{ env.GITHUB_HEAD_REF_SLUG_URL }}",
+              "image": "${{ secrets.AWS_TESTENVS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_TESTENVS_REGION }}.amazonaws.com/saleor-testenvs:${{ env.GITHUB_HEAD_REF_SLUG_URL }}"
+            }
+          LogType: Tail
+
+      - name: Mark deployment as deactivated
+        uses: bobheadxi/deployments@648679e8e4915b27893bd7dbc35cb504dc915bc8 # v1.5.0
+        with:
+          step: deactivate-env
+          token: ${{ secrets.GITHUB_TOKEN }}
+          env: ${{ env.GITHUB_HEAD_REF_SLUG_URL }}
