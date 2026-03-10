@@ -101,5 +101,47 @@ services:
     memswap_limit: 512M
     cpus: '0.5'
 
+  # ──────────────────────────────────────────
+  # Dashboard - 管理后台 WebUI（Nginx 静态服务）
+  # ──────────────────────────────────────────
+  nova-shop-dashboard:
+    image: gogoshine/nova-shop-dashboard:latest
+    container_name: nova-shop-dashboard
+    ports:
+      - "9000:80"   # Nginx 监听 80，对外暴露 9000
+    environment:
+      # 运行时覆盖构建时默认值，无需重新构建镜像
+      API_URL: "http://nova-shop:8000/graphql/"  # 指向后端 API 服务
+      APP_MOUNT_URI: "/dashboard/"
+      LOCALE_CODE: "ZH_Hans"  # 界面语言，可改为 EN
+    depends_on:
+      nova-shop:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 256M
+    memswap_limit: 256M
+    cpus: '0.5'
+
+  # ──────────────────────────────────────────
+  # Storefront - 商店前台 WebUI（Next.js）
+  # ──────────────────────────────────────────
+  nova-shop-storefront:
+    image: gogoshine/nova-shop-storefront:latest
+    container_name: nova-shop-storefront
+    ports:
+      - "3000:3000"  # Next.js 监听 3000
+    environment:
+      # 注意：NEXT_PUBLIC_* 变量在构建时写入，运行时修改需重新构建镜像
+      NEXT_PUBLIC_SALEOR_API_URL: "http://nova-shop:8000/graphql/"  # 修改为实际 API 地址
+      NEXT_PUBLIC_STOREFRONT_URL: "http://localhost:3000"           # 修改为实际访问域名
+      NEXT_PUBLIC_DEFAULT_CHANNEL: "default-channel"                # 修改为实际渠道 slug
+    depends_on:
+      nova-shop:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 512M
+    memswap_limit: 512M
+    cpus: '0.5'
+
 volumes:
   nova-shop-media:       # 媒体文件持久化

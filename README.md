@@ -76,6 +76,8 @@ cd nova-shop
 
 2. 修改 `docker-compose.yaml` 中的以下配置项：
 
+**后端 API（必改）：**
+
 | 配置项 | 说明 |
 |------|------|
 | `SECRET_KEY` | 替换为随机字符串 |
@@ -83,6 +85,23 @@ cd nova-shop
 | `CACHE_URL` | 填入实际 Redis 地址 |
 | `CELERY_BROKER_URL` | 填入实际 Redis 地址（可与 CACHE_URL 使用不同 db） |
 | `ALLOWED_HOSTS` / `ALLOWED_CLIENT_HOSTS` | 改为实际域名 |
+
+**Dashboard 管理后台（按需修改）：**
+
+| 配置项 | 说明 |
+|------|------|
+| `API_URL` | 后端 GraphQL 地址，生产环境改为实际域名 |
+| `LOCALE_CODE` | 界面语言，默认 `ZH_Hans`（简体中文） |
+
+**Storefront 商店前台（按需修改）：**
+
+| 配置项 | 说明 |
+|------|------|
+| `NEXT_PUBLIC_SALEOR_API_URL` | 后端 GraphQL 地址，生产环境改为实际域名 |
+| `NEXT_PUBLIC_STOREFRONT_URL` | 商店前台自身访问地址 |
+| `NEXT_PUBLIC_DEFAULT_CHANNEL` | Saleor 渠道 slug |
+
+> ℹ️ **注意**：Storefront 的 `NEXT_PUBLIC_*` 变量在构建镜像时已经写入，运行时设置不生效。如需修改这些地址，必须在 CI 构建时通过 `--build-arg` 传入。Dashboard 的 `API_URL` 支持运行时覆盖，无需重构。
 
 3. 启动服务（首次启动会自动执行数据库迁移）
 
@@ -96,11 +115,13 @@ docker compose up -d
 
 ### 服务说明
 
-| 服务 | 说明 |
-|------|------|
-| `nova-shop` | Web API，启动时自动执行数据库迁移 |
-| `celery` | 异步任务 Worker（邮件、Webhook 等） |
-| `celery-beat` | 定时任务调度器 |
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| `nova-shop` | 8000 | 后端 API，启动时自动执行数据库迁移 |
+| `celery` | - | 异步任务 Worker（邮件、Webhook 等） |
+| `celery-beat` | - | 定时任务调度器 |
+| `nova-shop-dashboard` | 9000 | 管理后台 WebUI，访问 `http://localhost:9000/dashboard/` |
+| `nova-shop-storefront` | 3000 | 商店前台 WebUI，访问 `http://localhost:3000` |
 
 ### 常用命令
 
