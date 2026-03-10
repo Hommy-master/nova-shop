@@ -1,0 +1,1 @@
+export { TaxClassesMenu } from "./TaxClassesMenu";

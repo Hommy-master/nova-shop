@@ -1,0 +1,64 @@
+import { stringifyQs } from "@dashboard/utils/urls";
+import urlJoin from "url-join";
+
+import {
+  type ActiveTab,
+  type BulkAction,
+  type Dialog,
+  type Filters,
+  type Pagination,
+  type SingleAction,
+  type Sort,
+  type TabActionDialog,
+} from "../types";
+
+export const attributeSection = "/attributes/";
+
+export enum AttributeListUrlFiltersEnum {
+  filterableInStorefront = "filterableInStorefront",
+  isVariantOnly = "isVariantOnly",
+  valueRequired = "valueRequired",
+  visibleInStorefront = "visibleInStorefront",
+  query = "query",
+}
+export type AttributeListUrlFilters = Filters<AttributeListUrlFiltersEnum>;
+export type AttributeListUrlDialog = "remove" | TabActionDialog;
+export enum AttributeListUrlSortField {
+  name = "name",
+  slug = "slug",
+  visible = "visible",
+  useInFacetedSearch = "use-in-faceted-search",
+}
+type AttributeListUrlSort = Sort<AttributeListUrlSortField>;
+export type AttributeListUrlQueryParams = ActiveTab &
+  AttributeListUrlFilters &
+  AttributeListUrlSort &
+  BulkAction &
+  Dialog<AttributeListUrlDialog> &
+  Pagination;
+export const attributeListPath = attributeSection;
+export const attributeListUrl = (params?: AttributeListUrlQueryParams) =>
+  attributeListPath + "?" + stringifyQs(params);
+
+export type AttributeAddUrlDialog =
+  | "add-value"
+  | "edit-value"
+  | "remove-value"
+  | "remove-values"
+  | "assign-reference-types";
+export type AttributeAddUrlQueryParams = Dialog<AttributeAddUrlDialog> & SingleAction;
+export const attributeAddPath = urlJoin(attributeSection, "add");
+export const attributeAddUrl = (params?: AttributeAddUrlQueryParams) =>
+  attributeAddPath + "?" + stringifyQs(params);
+
+export type AttributeUrlDialog =
+  | "add-value"
+  | "edit-value"
+  | "remove"
+  | "remove-value"
+  | "remove-values"
+  | "assign-reference-types";
+export type AttributeUrlQueryParams = BulkAction & Dialog<AttributeUrlDialog> & SingleAction;
+export const attributePath = (id: string) => urlJoin(attributeSection, id);
+export const attributeUrl = (id: string, params?: AttributeUrlQueryParams) =>
+  attributePath(encodeURIComponent(id)) + "?" + stringifyQs(params);

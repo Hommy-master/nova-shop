@@ -1,0 +1,93 @@
+// @ts-strict-ignore
+import {
+  type LanguageCodeEnum,
+  useCollectionTranslationDetailsQuery,
+  useUpdateCollectionTranslationsMutation,
+} from "@dashboard/graphql";
+import useNavigator from "@dashboard/hooks/useNavigator";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
+import useShop from "@dashboard/hooks/useShop";
+import { stringifyQs } from "@dashboard/utils/urls";
+import { useIntl } from "react-intl";
+
+import { extractMutationErrors, maybe } from "../../misc";
+import TranslationsCollectionsPage from "../components/TranslationsCollectionsPage";
+import { type TranslationField, type TranslationInputFieldName } from "../types";
+import { getParsedTranslationInputData } from "../utils";
+
+export interface TranslationsCollectionsQueryParams {
+  activeField: string;
+}
+interface TranslationsCollectionsProps {
+  id: string;
+  languageCode: LanguageCodeEnum;
+  params: TranslationsCollectionsQueryParams;
+}
+
+const TranslationsCollections = ({ id, languageCode, params }: TranslationsCollectionsProps) => {
+  const navigate = useNavigator();
+  const notify = useNotifier();
+  const shop = useShop();
+  const intl = useIntl();
+  const collectionTranslations = useCollectionTranslationDetailsQuery({
+    variables: { id, language: languageCode },
+  });
+  const [updateTranslations, updateTranslationsOpts] = useUpdateCollectionTranslationsMutation({
+    onCompleted: data => {
+      if (data.collectionTranslate.errors.length === 0) {
+        collectionTranslations.refetch();
+        notify({
+          status: "success",
+          text: intl.formatMessage({ id: "WLyKAQ", defaultMessage: "Translation saved" }),
+        });
+        navigate("?", { replace: true });
+      }
+    },
+  });
+  const onEdit = (field: string) =>
+    navigate(
+      "?" +
+        stringifyQs({
+          activeField: field,
+        }),
+      { replace: true },
+    );
+  const onDiscard = () => {
+    navigate("?", { replace: true });
+  };
+  const translation = collectionTranslations?.data?.translation;
+  const handleSubmit = (
+    { name: fieldName }: TranslationField<TranslationInputFieldName>,
+    data: string,
+  ) =>
+    extractMutationErrors(
+      updateTranslations({
+        variables: {
+          id,
+          input: getParsedTranslationInputData({
+            data,
+            fieldName,
+          }),
+          language: languageCode,
+        },
+      }),
+    );
+
+  return (
+    <TranslationsCollectionsPage
+      translationId={id}
+      activeField={params.activeField}
+      disabled={collectionTranslations.loading || updateTranslationsOpts.loading}
+      languageCode={languageCode}
+      languages={maybe(() => shop.languages, [])}
+      saveButtonState={updateTranslationsOpts.status}
+      onEdit={onEdit}
+      onDiscard={onDiscard}
+      onSubmit={handleSubmit}
+      data={translation?.__typename === "CollectionTranslatableContent" ? translation : null}
+    />
+  );
+};
+
+TranslationsCollections.displayName = "TranslationsCollections";
+export default TranslationsCollections;

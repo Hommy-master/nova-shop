@@ -1,0 +1,46 @@
+import { iconSize, iconStrokeWidthBySize } from "@dashboard/components/icons";
+import { Box, Button, Dropdown, List, Text, type TextProps } from "@saleor/macaw-ui-next";
+import { Settings } from "lucide-react";
+
+interface TopNavMenuItem {
+  label: string;
+  testId?: string;
+  onSelect: <T extends object>(params: T) => void;
+  color?: TextProps["color"];
+}
+
+interface TopNavMenuProps {
+  items: TopNavMenuItem[];
+  dataTestId?: string;
+}
+
+export const Menu = ({ items, dataTestId }: TopNavMenuProps) => (
+  <Dropdown data-test-id={dataTestId}>
+    <Dropdown.Trigger>
+      <Button
+        icon={<Settings size={iconSize.small} strokeWidth={iconStrokeWidthBySize.small} />}
+        variant="secondary"
+        data-test-id="show-more-button"
+      />
+    </Dropdown.Trigger>
+    <Dropdown.Content align="end">
+      <Box>
+        <List padding={2} borderRadius={4} boxShadow="defaultOverlay" backgroundColor="default1">
+          {items.map(item => (
+            <Dropdown.Item key={item.label}>
+              <List.Item
+                borderRadius={4}
+                paddingX={1.5}
+                paddingY={2}
+                onClick={item.onSelect}
+                data-test-id={item.testId}
+              >
+                <Text color={item.color}>{item.label}</Text>
+              </List.Item>
+            </Dropdown.Item>
+          ))}
+        </List>
+      </Box>
+    </Dropdown.Content>
+  </Dropdown>
+);

@@ -1,0 +1,94 @@
+// @ts-strict-ignore
+import {
+  type ApolloError,
+  type MutationFunction,
+  type MutationHookOptions as BaseMutationHookOptions,
+  type MutationResult,
+  useMutation as useBaseMutation,
+} from "@apollo/client";
+import { isJwtError } from "@dashboard/auth/errors";
+import { useUser } from "@dashboard/auth/useUser";
+import { handleNestedMutationErrors, showAllErrors } from "@dashboard/auth/utils";
+import { commonMessages } from "@dashboard/intl";
+import { getMutationStatus } from "@dashboard/misc";
+import { type MutationResultAdditionalProps } from "@dashboard/types";
+import { GqlErrors, hasError } from "@dashboard/utils/api";
+import { type DocumentNode } from "graphql";
+import { useIntl } from "react-intl";
+
+import { useNotifier } from "./useNotifier";
+
+export type MutationResultWithOpts<TData> = MutationResult<TData> & MutationResultAdditionalProps;
+
+type UseMutation<TData, TVariables> = [
+  MutationFunction<TData, TVariables>,
+  MutationResultWithOpts<TData>,
+];
+
+export type MutationHookOptions<TData, TVariables> = BaseMutationHookOptions<TData, TVariables> & {
+  disableErrorHandling?: boolean;
+};
+
+export function useMutation<TData, TVariables>(
+  mutation: DocumentNode,
+  { onCompleted, onError, disableErrorHandling, ...opts }: MutationHookOptions<TData, TVariables>,
+): UseMutation<TData, TVariables> {
+  const notify = useNotifier();
+  const intl = useIntl();
+  const user = useUser();
+  const [mutateFn, result] = useBaseMutation(mutation, {
+    ...opts,
+    onCompleted: data => {
+      if (!disableErrorHandling) {
+        handleNestedMutationErrors({
+          data,
+          intl,
+          notify,
+        });
+      }
+
+      if (onCompleted) {
+        onCompleted(data);
+      }
+    },
+    onError: (err: ApolloError) => {
+      if (!disableErrorHandling) {
+        if (err?.graphQLErrors?.length > 0) {
+          if (hasError(err, GqlErrors.ReadOnlyException)) {
+            notify({
+              status: "error",
+              text: intl.formatMessage(commonMessages.readOnly),
+            });
+          } else if (err.graphQLErrors.some(isJwtError)) {
+            user.logout();
+            notify({
+              status: "error",
+              text: intl.formatMessage(commonMessages.sessionExpired),
+            });
+          } else if (!hasError(err, GqlErrors.LimitReachedException)) {
+            err.graphQLErrors.forEach(graphQLError => {
+              notify({
+                status: "error",
+                apiMessage: graphQLError.message,
+              });
+            });
+          }
+        } else {
+          showAllErrors({ notify, error: err });
+        }
+      }
+
+      if (onError) {
+        onError(err);
+      }
+    },
+  });
+
+  return [
+    mutateFn,
+    {
+      ...result,
+      status: getMutationStatus(result),
+    },
+  ];
+}

@@ -1,0 +1,47 @@
+import { useDiscountRulesContext } from "@dashboard/discounts/components/DiscountRules/context";
+import { type Condition, type Rule } from "@dashboard/discounts/models";
+import { Combobox } from "@saleor/macaw-ui-next";
+import { useController, useFormContext } from "react-hook-form";
+
+import { useConditionNames } from "./hooks/useConditionNames";
+import { getConditionNameValue } from "./utils";
+
+interface RuleConditionNameProps {
+  conditionIndex: number;
+  updateCondition: (index: number, value: Condition) => void;
+  isConditionTypeSelected: (conditionType: string) => boolean;
+}
+
+export const RuleConditionName = ({
+  conditionIndex,
+  updateCondition,
+  isConditionTypeSelected,
+}: RuleConditionNameProps) => {
+  const { watch } = useFormContext<Rule>();
+  const { discountType, disabled } = useDiscountRulesContext();
+  const conditionNames = useConditionNames(discountType);
+  const ruleConditionNameFieldName = `conditions.${conditionIndex}.id` as const;
+  const { field: nameField } = useController<Rule, typeof ruleConditionNameFieldName>({
+    name: ruleConditionNameFieldName,
+  });
+  const condition = watch(`conditions.${conditionIndex}`);
+  const filteredConditionLeftOptions = conditionNames.filter(
+    condition => !isConditionTypeSelected(condition.value),
+  );
+
+  return (
+    <Combobox
+      value={getConditionNameValue(nameField.value, conditionNames)}
+      options={filteredConditionLeftOptions}
+      onChange={v => {
+        condition.value = [];
+        updateCondition(conditionIndex, condition);
+        nameField.onChange(v?.value ?? "");
+      }}
+      size="medium"
+      data-test-id={`condition-name-${conditionIndex}`}
+      onBlur={nameField.onBlur}
+      disabled={disabled}
+    />
+  );
+};

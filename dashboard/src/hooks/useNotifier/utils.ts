@@ -1,0 +1,18 @@
+import { type INotification } from "@dashboard/components/notifications";
+import { commonMessages } from "@dashboard/intl";
+import commonErrorMessages from "@dashboard/utils/errors/common";
+import { type IntlShape } from "react-intl";
+
+export const getDefaultNotifierSuccessErrorData = (
+  errors: any[],
+  intl: IntlShape,
+): INotification =>
+  !errors.length
+    ? {
+        status: "success",
+        text: intl.formatMessage(commonMessages.savedChanges),
+      }
+    : {
+        status: "error",
+        text: intl.formatMessage(commonErrorMessages.unknownError),
+      };

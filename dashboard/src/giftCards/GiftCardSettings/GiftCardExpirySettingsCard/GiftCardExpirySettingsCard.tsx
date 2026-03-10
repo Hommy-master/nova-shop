@@ -1,0 +1,59 @@
+// @ts-strict-ignore
+import { DashboardCard } from "@dashboard/components/Card";
+import GiftCardSettingsExpirySelect, {
+  type GiftCardSettingsExpirySelectProps,
+} from "@dashboard/giftCards/components/GiftCardSettingsExpirySelect";
+import { makeStyles } from "@saleor/macaw-ui";
+import type * as React from "react";
+import { useIntl } from "react-intl";
+
+import { type GiftCardSettingsFormData } from "../types";
+import { giftCardExpirySettingsCard as messages } from "./messages";
+
+interface GiftCardExpirySettingsCardProps
+  extends Pick<GiftCardSettingsExpirySelectProps, "errors"> {
+  data: GiftCardSettingsFormData;
+  disabled: boolean;
+  onChange: (event: React.ChangeEvent<any>) => void;
+}
+
+const useStyles = makeStyles(
+  () => ({
+    cardTitle: {
+      paddingTop: 0,
+    },
+  }),
+  { name: "GiftCardExpirySettingsCard" },
+);
+const GiftCardExpirySettingsCard = ({
+  data,
+  disabled,
+  errors,
+  onChange,
+}: GiftCardExpirySettingsCardProps) => {
+  const intl = useIntl();
+  const classes = useStyles({});
+
+  return (
+    <DashboardCard data-test-id="gift-card-settings">
+      <DashboardCard.Header>
+        <DashboardCard.Title className={classes.cardTitle}>
+          {intl.formatMessage(messages.expiryDateTitle)}
+        </DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content>
+        <GiftCardSettingsExpirySelect
+          expiryPeriodActive={data.expiryPeriodActive}
+          expiryPeriodType={data.expiryPeriodType}
+          expiryPeriodAmount={data.expiryPeriodAmount}
+          change={onChange}
+          disabled={disabled}
+          errors={errors}
+        />
+      </DashboardCard.Content>
+    </DashboardCard>
+  );
+};
+
+GiftCardExpirySettingsCard.displayName = "GiftCardExpirySettingsCard";
+export default GiftCardExpirySettingsCard;

@@ -1,0 +1,117 @@
+// @ts-strict-ignore
+import { DashboardCard } from "@dashboard/components/Card";
+import CollectionWithDividers from "@dashboard/components/CollectionWithDividers";
+import { DashboardModal } from "@dashboard/components/Modal";
+import VerticalSpacer from "@dashboard/components/VerticalSpacer";
+import { useCustomerDetails } from "@dashboard/customers/hooks/useCustomerDetails";
+import GiftCardCreateDialogContent from "@dashboard/giftCards/GiftCardCreateDialog/GiftCardCreateDialogContent";
+import { getExtendedGiftCard } from "@dashboard/giftCards/GiftCardUpdate/providers/GiftCardDetailsProvider/utils";
+import { giftCardListUrl } from "@dashboard/giftCards/urls";
+import { useCustomerGiftCardListQuery } from "@dashboard/graphql";
+import { getFullName } from "@dashboard/misc";
+import { mapEdgesToItems } from "@dashboard/utils/maps";
+import { Button, Skeleton } from "@saleor/macaw-ui-next";
+import { useState } from "react";
+import { FormattedMessage, useIntl } from "react-intl";
+import { Link } from "react-router-dom";
+
+import CustomerGiftCardsCardListItem from "./CustomerGiftCardsCardListItem";
+import { giftCardCustomerCardMessages as messages } from "./messages";
+import { CUSTOMER_GIFT_CARD_LIST_QUERY } from "./queries";
+
+const CustomerGiftCardsCard = () => {
+  const intl = useIntl();
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const customerDetails = useCustomerDetails();
+  const customer = customerDetails?.customer?.user;
+  const id = customer?.id;
+
+  const { data, loading } = useCustomerGiftCardListQuery({
+    variables: {
+      first: 5,
+      filter: {
+        usedBy: [id],
+      },
+    },
+    skip: !id,
+  });
+
+  const closeCreateDialog = () => setOpenCreateDialog(false);
+
+  const giftCards = mapEdgesToItems(data?.giftCards);
+
+  const viewAllGiftCardsUrl = giftCardListUrl({
+    usedBy: [id],
+  });
+
+  const handleCreateNewCardButton = () => {
+    setOpenCreateDialog(true);
+  };
+
+  return (
+    <>
+      <DashboardCard>
+        <DashboardCard.Header>
+          <DashboardCard.Title title={intl.formatMessage(messages.customerGiftCardsCardTitle)}>
+            <FormattedMessage
+              {...(giftCards?.length
+                ? messages.customerGiftCardsPresentSubtitle
+                : messages.customerGiftCardsAbsentSubtitle)}
+            />
+            <VerticalSpacer spacing={2} />
+          </DashboardCard.Title>
+          <DashboardCard.Toolbar>
+            <>
+              {!!giftCards?.length && (
+                <Link to={viewAllGiftCardsUrl}>
+                  <Button variant="tertiary">
+                    <FormattedMessage {...messages.customerGiftCardsViewAllButton} />
+                  </Button>
+                </Link>
+              )}
+            </>
+          </DashboardCard.Toolbar>
+        </DashboardCard.Header>
+
+        {!loading && giftCards ? (
+          <CollectionWithDividers
+            collection={giftCards}
+            renderItem={giftCard => (
+              <CustomerGiftCardsCardListItem giftCard={getExtendedGiftCard(giftCard)} />
+            )}
+            withOuterDividers
+          />
+        ) : (
+          <Skeleton height={2} marginX={6} />
+        )}
+        <DashboardCard.BottomActions paddingX={6} paddingY={0}>
+          <Button
+            variant="secondary"
+            onClick={handleCreateNewCardButton}
+            data-test-id="issue-new-gift-card"
+          >
+            <FormattedMessage {...messages.customerGiftCardsIssueNewCardButton} />
+          </Button>
+        </DashboardCard.BottomActions>
+      </DashboardCard>
+      <DashboardModal open={openCreateDialog} onChange={closeCreateDialog}>
+        <GiftCardCreateDialogContent
+          onClose={closeCreateDialog}
+          refetchQueries={[CUSTOMER_GIFT_CARD_LIST_QUERY]}
+          initialCustomer={{
+            email: customer?.email,
+            name:
+              getFullName(customer) ||
+              intl.formatMessage({
+                defaultMessage: "Unknown customer",
+                id: "+mbkbU",
+                description: "unknown customer display name",
+              }),
+          }}
+        />
+      </DashboardModal>
+    </>
+  );
+};
+
+export default CustomerGiftCardsCard;

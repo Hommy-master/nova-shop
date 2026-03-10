@@ -1,0 +1,105 @@
+import {
+  type CustomCell,
+  type CustomRenderer,
+  getMiddleCenterBias,
+  GridCellKind,
+  type ProvideEditorCallback,
+} from "@glideapps/glide-data-grid";
+import { DynamicCombobox, type Option } from "@saleor/macaw-ui-next";
+import { useCallback, useState } from "react";
+
+type DropdownCellGetSuggestionsFn = (text: string) => Promise<Option[]>;
+export interface DropdownCellProps {
+  readonly choices?: Option[];
+  readonly update?: DropdownCellGetSuggestionsFn;
+  readonly kind: "dropdown-cell";
+  readonly value: Option | null;
+  readonly allowCustomValues?: boolean;
+  readonly emptyOption?: boolean;
+}
+
+export type DropdownCell = CustomCell<DropdownCellProps>;
+
+export const emptyDropdownCellValue: Option = {
+  label: "",
+  value: "",
+};
+
+const DropdownCellEdit: ReturnType<ProvideEditorCallback<DropdownCell>> = ({
+  value: cell,
+  onFinishedEditing,
+}) => {
+  const [data, setData] = useState<Option[]>([]);
+
+  const getChoices = useCallback(
+    async (text: string) => {
+      setData((await cell.data?.update?.(text)) ?? []);
+    },
+    [cell.data],
+  );
+
+  const props = cell.data.update
+    ? { fetchOnFocus: true, fetchChoices: getChoices, choices: data }
+    : { fetchOnFocus: false, fetchChoices: () => Promise.resolve([]), choices: cell.data.choices };
+
+  return (
+    <DynamicCombobox
+      options={props.choices ?? []}
+      value={cell.data.value}
+      onFocus={() => props.fetchChoices("")}
+      loading={false}
+      name=""
+      /**
+       * There is a bug - looks like it's properly changing with keyobard, but mouse event is somehow not passed
+       * to the dropdown layer @fixme
+       */
+      onChange={option => {
+        return onFinishedEditing({
+          ...cell,
+          data: {
+            ...cell.data,
+            value: props.choices?.find(c => c.value === option?.value) ?? {
+              label: option?.label ?? "",
+              value: option?.value ?? "",
+            },
+          },
+        });
+      }}
+    />
+  );
+};
+
+export const dropdownCellRenderer: CustomRenderer<DropdownCell> = {
+  kind: GridCellKind.Custom,
+  isMatch: (c): c is DropdownCell => (c.data as any).kind === "dropdown-cell",
+  draw: (args, cell) => {
+    const { ctx, theme, rect } = args;
+    const { value } = cell.data;
+
+    ctx.fillStyle = theme.textDark;
+    ctx.fillText(
+      value?.label ?? "",
+      rect.x + 8,
+      rect.y + rect.height / 2 + getMiddleCenterBias(ctx, theme),
+    );
+
+    return true;
+  },
+  provideEditor: () => ({
+    editor: DropdownCellEdit,
+    disablePadding: true,
+    deletedValue: cell => ({
+      ...cell,
+      copyData: "",
+      data: {
+        ...cell.data,
+        display: "",
+        value: null,
+      },
+    }),
+  }),
+  onPaste: (value, data) => ({
+    ...data,
+    value: value ? { value, label: value } : null,
+  }),
+};

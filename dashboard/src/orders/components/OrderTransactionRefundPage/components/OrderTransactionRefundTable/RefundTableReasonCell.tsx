@@ -1,0 +1,37 @@
+import { GridTable } from "@dashboard/components/GridTable";
+import { Button } from "@saleor/macaw-ui-next";
+import { type FieldArrayWithId } from "react-hook-form";
+import { FormattedMessage } from "react-intl";
+
+import { type OrderTransactionRefundPageFormData } from "../../OrderTransactionRefundPage";
+import { refundTableMessages } from "./messages";
+
+interface RefundTableReasonCellProps {
+  index: number;
+  onEditReasonModal: (index: number) => void;
+  field: FieldArrayWithId<OrderTransactionRefundPageFormData, "linesToRefund", "id">;
+}
+
+export const RefundTableReasonCell = ({
+  index,
+  field,
+  onEditReasonModal,
+}: RefundTableReasonCellProps) => {
+  return (
+    <GridTable.Cell>
+      <Button
+        data-test-id="line-refund-reason-button"
+        variant="secondary"
+        whiteSpace="nowrap"
+        onClick={() => onEditReasonModal(index)}
+        disabled={!field.quantity}
+      >
+        {!field.reason ? (
+          <FormattedMessage {...refundTableMessages.addReasonBtn} />
+        ) : (
+          <FormattedMessage {...refundTableMessages.editReasonBtn} />
+        )}
+      </Button>
+    </GridTable.Cell>
+  );
+};

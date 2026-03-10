@@ -1,0 +1,260 @@
+import { RequirementsPicker } from "@dashboard/discounts/types";
+import {
+  type ChannelDetailsFragment,
+  type ChannelFragment,
+  type CollectionDetailsFragment,
+  type ProductVariantDetailsQuery,
+  type ShippingMethodTypeFragment,
+  type ShippingZoneQuery,
+  type VoucherDetailsFragment,
+} from "@dashboard/graphql";
+import { type RequireOnlyOne } from "@dashboard/misc";
+import { validatePrice } from "@dashboard/products/utils/validation";
+import { mapNodeToChoice } from "@dashboard/utils/maps";
+import uniqBy from "lodash/uniqBy";
+
+export interface Channel {
+  id: string;
+  name: string;
+}
+
+export interface ChannelData {
+  id: string;
+  name: string;
+  isPublished?: boolean;
+  publishedAt?: string | null;
+  currency?: string;
+  variantsIds?: string[];
+  price?: string;
+  costPrice?: string;
+  availableForPurchaseAt?: string;
+  isAvailableForPurchase?: boolean;
+  visibleInListings?: boolean;
+  preorderThreshold?: number;
+  unitsSold?: number;
+}
+
+export interface ChannelPriceData {
+  id: string;
+  name: string;
+  currency: string;
+  price: string;
+  costPrice?: string;
+}
+
+interface IChannelPriceArgs {
+  price: string;
+  costPrice: string;
+}
+export type ChannelPriceArgs = RequireOnlyOne<IChannelPriceArgs, "price" | "costPrice">;
+
+export interface ChannelPriceAndPreorderData {
+  id: string;
+  name: string;
+  currency: string;
+  price: string;
+  costPrice?: string;
+  preorderThreshold?: number | null;
+  unitsSold?: number;
+}
+
+export interface IChannelPriceAndPreorderArgs {
+  price: string;
+  costPrice: string;
+  preorderThreshold?: number | null;
+  unitsSold?: number;
+}
+export type ChannelPriceAndPreorderArgs = IChannelPriceArgs & {
+  preorderThreshold: number | null;
+  unitsSold?: number;
+};
+
+export interface ChannelVoucherData {
+  id: string;
+  name: string;
+  discountValue: string;
+  currency: string;
+  minSpent: string;
+}
+
+export interface ChannelCollectionData {
+  id: string;
+  isPublished: boolean;
+  name: string;
+  publishedAt: string | null;
+}
+
+export const createCollectionChannels = (data?: ChannelFragment[]) =>
+  data?.map(channel => ({
+    id: channel.id,
+    isPublished: false,
+    name: channel.name,
+    publishedAt: null,
+  }));
+
+const createVoucherChannels = (data?: ChannelFragment[]) =>
+  data?.map(channel => ({
+    currency: channel.currencyCode,
+    discountValue: "",
+    id: channel.id,
+    minSpent: "",
+    name: channel.name,
+  }));
+
+export const createVariantChannels = (
+  data?: ProductVariantDetailsQuery["productVariant"],
+): ChannelPriceData[] => {
+  if (data) {
+    return data?.channelListings?.map(listing => ({
+      costPrice: listing.costPrice?.amount.toString() || "",
+      currency: listing.channel.currencyCode,
+      id: listing.channel.id,
+      name: listing.channel.name,
+      price: listing.price?.amount?.toString(),
+    })) as ChannelPriceData[];
+  }
+
+  return [];
+};
+
+export const createChannelsDataWithDiscountPrice = (
+  voucherData?: VoucherDetailsFragment,
+  data?: ChannelFragment[],
+): ChannelVoucherData[] => {
+  if (data && voucherData?.channelListings) {
+    const dataArr = createVoucherChannels(data);
+    const voucherDataArr = createChannelsDataFromVoucher(voucherData);
+
+    return uniqBy([...voucherDataArr, ...dataArr!], obj => obj.id);
+  }
+
+  return [];
+};
+
+const createChannelsData = (data?: ChannelFragment[]): ChannelData[] =>
+  data?.map(channel => ({
+    availableForPurchaseAt: undefined,
+    costPrice: "",
+    currency: channel.currencyCode,
+    id: channel.id,
+    isAvailableForPurchase: false,
+    variantsIds: [],
+    isPublished: false,
+    name: channel.name,
+    price: "",
+    publishedAt: null,
+    visibleInListings: false,
+  })) || [];
+
+const createShippingChannels = (
+  data?: NonNullable<ShippingZoneQuery["shippingZone"]>["channels"],
+): ChannelShippingData[] =>
+  data?.map(channel => ({
+    currency: channel.currencyCode,
+    id: channel.id,
+    maxValue: "",
+    minValue: "",
+    name: channel.name,
+    price: "",
+  })) || [];
+
+export const createShippingChannelsFromRate = (
+  data?: ShippingMethodTypeFragment["channelListings"],
+): ChannelShippingData[] =>
+  data?.map(channelData => ({
+    currency: channelData.channel.currencyCode,
+    id: channelData.channel.id,
+    maxValue: channelData.maximumOrderPrice ? channelData.maximumOrderPrice.amount.toString() : "",
+    minValue: channelData.minimumOrderPrice ? channelData.minimumOrderPrice.amount.toString() : "",
+    name: channelData.channel.name,
+    price: channelData.price ? channelData.price.amount.toString() : "",
+  })) || [];
+
+export const createCollectionChannelsData = (collectionData?: CollectionDetailsFragment) => {
+  if (collectionData?.channelListings) {
+    const collectionDataArr = collectionData?.channelListings.map(listing => ({
+      id: listing.channel.id,
+      isPublished: listing.isPublished,
+      name: listing.channel.name,
+      publishedAt: listing.publishedAt,
+    }));
+
+    return collectionDataArr;
+  }
+};
+
+export interface ChannelShippingData {
+  currency: string;
+  id: string;
+  minValue: string;
+  name: string;
+  maxValue: string;
+  price: string;
+}
+
+const createChannelsDataFromVoucher = (voucherData?: VoucherDetailsFragment) =>
+  voucherData?.channelListings?.map(option => ({
+    currency: option.channel.currencyCode || option?.minSpent?.currency || "",
+    discountValue: option.discountValue.toString() || "",
+    id: option.channel.id,
+    minSpent: option?.minSpent?.amount.toString() || "",
+    name: option.channel.name,
+  })) || [];
+
+export const createSortedChannelsData = (data?: ChannelFragment[]) =>
+  createChannelsData(data)?.sort((channel, nextChannel) =>
+    channel.name.localeCompare(nextChannel.name),
+  );
+
+export const createSortedShippingChannels = (
+  data?: NonNullable<ShippingZoneQuery["shippingZone"]>["channels"],
+) =>
+  createShippingChannels(data)?.sort((channel, nextChannel) =>
+    channel.name.localeCompare(nextChannel.name),
+  );
+
+export const createSortedVoucherData = (data?: ChannelFragment[]) =>
+  createVoucherChannels(data)?.sort((channel, nextChannel) =>
+    channel.name.localeCompare(nextChannel.name),
+  );
+export const createSortedChannelsDataFromVoucher = (data?: VoucherDetailsFragment) =>
+  createChannelsDataFromVoucher(data)?.sort((channel, nextChannel) =>
+    channel.name.localeCompare(nextChannel.name),
+  );
+export const getChannelsCurrencyChoices = (
+  id: string,
+  selectedChannel: ChannelDetailsFragment,
+  channelsList: ChannelDetailsFragment[],
+) =>
+  id
+    ? mapNodeToChoice(
+        channelsList?.filter(
+          channel => channel.id !== id && channel.currencyCode === selectedChannel?.currencyCode,
+        ),
+      )
+    : [];
+
+export const validateVoucherPrice = (
+  requirementsPicker: RequirementsPicker,
+  channel: ChannelVoucherData,
+) =>
+  validatePrice(channel.discountValue) ||
+  (requirementsPicker === RequirementsPicker.ORDER && validatePrice(channel.minSpent));
+
+type BareChannel = { id: string };
+type BareChannelListing = { channel: BareChannel };
+
+const channelsToIds = (channels: BareChannel[]) => channels.map(({ id }) => id);
+const channelListingsToChannels = (listings: BareChannelListing[]) =>
+  listings.map(ch => ch.channel);
+
+export const isAvailableInChannel = ({
+  availableChannels,
+  channelListings,
+}: {
+  availableChannels: BareChannel[];
+  channelListings: BareChannelListing[];
+}) =>
+  channelsToIds(availableChannels).some(id =>
+    channelsToIds(channelListingsToChannels(channelListings)).includes(id),
+  );

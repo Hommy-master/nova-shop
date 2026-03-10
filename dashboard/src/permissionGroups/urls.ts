@@ -1,0 +1,47 @@
+import {
+  type BulkAction,
+  type Dialog,
+  type Pagination,
+  type SingleAction,
+  type Sort,
+  type TabActionDialog,
+} from "@dashboard/types";
+import { stringifyQs } from "@dashboard/utils/urls";
+import urlJoin from "url-join";
+
+const permissionGroupSection = "/permission-groups/";
+
+export const permissionGroupListPath = permissionGroupSection;
+
+type PermissionGroupListUrlDialog = "remove" | TabActionDialog;
+export enum PermissionGroupListUrlSortField {
+  name = "name",
+}
+type PermissionGroupListUrlSort = Sort<PermissionGroupListUrlSortField>;
+export type PermissionGroupListUrlQueryParams = Dialog<PermissionGroupListUrlDialog> &
+  Pagination &
+  PermissionGroupListUrlSort &
+  SingleAction;
+export const permissionGroupListUrl = (params?: PermissionGroupListUrlQueryParams) =>
+  permissionGroupListPath + "?" + stringifyQs(params);
+
+export const permissionGroupAddPath = urlJoin(permissionGroupSection, "add");
+export const permissionGroupAddUrl = permissionGroupAddPath;
+
+export enum MembersListUrlSortField {
+  name = "name",
+  email = "email",
+}
+type MembersListUrlSort = Sort<MembersListUrlSortField>;
+
+export const permissionGroupDetailsPath = (id: string) => urlJoin(permissionGroupSection, id);
+export type PermissionGroupDetailsUrlDialog = "remove" | "assign" | "unassign" | "unassignError";
+export type PermissionGroupDetailsUrlQueryParams = BulkAction &
+  Pagination &
+  MembersListUrlSort &
+  Dialog<PermissionGroupDetailsUrlDialog>;
+
+export const permissionGroupDetailsUrl = (
+  id: string,
+  params?: PermissionGroupDetailsUrlQueryParams,
+) => permissionGroupDetailsPath(encodeURIComponent(id)) + "?" + stringifyQs(params);

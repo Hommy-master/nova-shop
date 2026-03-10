@@ -1,0 +1,40 @@
+import { type ChannelVoucherData } from "@dashboard/channels/utils";
+import { type VoucherChannelListingAddInput } from "@dashboard/graphql";
+
+import { type VoucherDetailsPageFormData } from "./components/VoucherDetailsPage";
+import { RequirementsPicker } from "./types";
+
+const getChannelDiscountValue = (
+  channel: ChannelVoucherData,
+  formData: VoucherDetailsPageFormData,
+) => {
+  // 100 means that the discount is 100%
+  return formData.discountType.toString() === "SHIPPING" ? 100 : channel.discountValue;
+};
+const getChannelMinAmountSpent = (
+  channel: ChannelVoucherData,
+  formData: VoucherDetailsPageFormData,
+) => {
+  if (formData.requirementsPicker === RequirementsPicker.NONE) {
+    return null;
+  }
+
+  if (formData.requirementsPicker === RequirementsPicker.ITEM) {
+    return 0;
+  }
+
+  return channel.minSpent;
+};
+const mapChannelToChannelInput =
+  (formData: VoucherDetailsPageFormData) => (channel: ChannelVoucherData) => ({
+    channelId: channel.id,
+    discountValue: getChannelDiscountValue(channel, formData),
+    minAmountSpent: getChannelMinAmountSpent(channel, formData),
+  });
+const filterNotDiscountedChannel = (channelInput: VoucherChannelListingAddInput) =>
+  !!channelInput.discountValue;
+
+export const getAddedChannelsInputFromFormData = (formData: VoucherDetailsPageFormData) =>
+  formData.channelListings
+    ?.map(mapChannelToChannelInput(formData))
+    .filter(filterNotDiscountedChannel) || [];

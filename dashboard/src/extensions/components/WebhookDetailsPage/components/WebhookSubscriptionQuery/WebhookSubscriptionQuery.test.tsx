@@ -1,0 +1,47 @@
+import { type WebhookEventTypeAsyncEnum, type WebhookEventTypeSyncEnum } from "@dashboard/graphql";
+import { type Fetcher } from "@graphiql/toolkit";
+import { ThemeProvider } from "@saleor/macaw-ui-next";
+import { ApolloMockedProvider } from "@test/ApolloMockedProvider";
+import { render, screen } from "@testing-library/react";
+
+import { WebhookSubscriptionQuery } from "./WebhookSubscriptionQuery";
+
+jest.mock("@graphiql/toolkit", () => ({
+  clear: jest.fn(),
+  createGraphiQLFetcher: jest.fn(_x => jest.fn() as Fetcher),
+}));
+
+beforeEach(() => {
+  window.localStorage.clear();
+});
+describe("WebhookSubscriptionQuery", () => {
+  it("is available on the webhook page", async () => {
+    // Arrange
+    const props = {
+      query: "",
+      setQuery: jest.fn(),
+      data: {
+        syncEvents: [] as WebhookEventTypeSyncEnum[],
+        asyncEvents: [] as WebhookEventTypeAsyncEnum[],
+        isActive: false,
+        name: "",
+        targetUrl: "",
+        subscriptionQuery: "",
+        customHeaders: "",
+      },
+      errors: [],
+    };
+
+    // Act
+    render(
+      <ApolloMockedProvider>
+        <ThemeProvider>
+          <WebhookSubscriptionQuery {...props} />
+        </ThemeProvider>
+      </ApolloMockedProvider>,
+    );
+    // Assert
+    expect(screen.queryByTestId("graphiql-container")).toBeInTheDocument();
+    expect(screen.queryByTestId("graphiql-container2")).not.toBeInTheDocument();
+  });
+});

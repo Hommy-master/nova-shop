@@ -1,0 +1,33 @@
+import { stringifyQs } from "@dashboard/utils/urls";
+import urlJoin from "url-join";
+
+import {
+  type BulkAction,
+  type Dialog,
+  type Pagination,
+  type SingleAction,
+  type Sort,
+} from "../types";
+
+const navigationSection = "/structures";
+
+export const structuresListPath = navigationSection;
+type MenuListUrlDialog = "add" | "remove" | "remove-many";
+export enum MenuListUrlSortField {
+  name = "name",
+  items = "items",
+}
+type MenuListUrlSort = Sort<MenuListUrlSortField>;
+export type MenuListUrlQueryParams = BulkAction &
+  Dialog<MenuListUrlDialog> &
+  MenuListUrlSort &
+  Pagination &
+  SingleAction;
+export const menuListUrl = (params?: MenuListUrlQueryParams) =>
+  structuresListPath + "?" + stringifyQs(params);
+
+export const menuPath = (id: string) => urlJoin(navigationSection, id);
+type MenuUrlDialog = "add-item" | "edit-item" | "remove";
+export type MenuUrlQueryParams = Dialog<MenuUrlDialog> & SingleAction;
+export const menuUrl = (id: string, params?: MenuUrlQueryParams) =>
+  menuPath(encodeURIComponent(id)) + "?" + stringifyQs(params);

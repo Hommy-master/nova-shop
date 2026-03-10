@@ -1,0 +1,153 @@
+#portal {
+  position: fixed;
+  top: 0;
+}
+
+html {
+  /* set base font size to 13px */
+  font-size: 50.782% !important;
+}
+
+body {
+  color: var(--mu-colors-foreground-text-neutral-plain) !important;
+  overscroll-behavior-y: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.2);
+  }
+}
+
+.animate-copy {
+  animation: pulse 0.2s;
+  transition: all 0.2s;
+}
+
+.remove-icon-background svg {
+  background: none !important;
+}
+
+.remove-content-padding-top .MuiCardContent-root {
+  padding-top: 0 !important;
+}
+
+[id*="ScrollableDialog"] .infinite-scroll-component {
+  overflow: hidden !important;
+}
+
+/* 
+  TODO: Remove it when macaw will handle media queries in custom properties
+  https://github.com/saleor/macaw-ui/issues/498
+*/
+@media screen and (max-width: 1024px) {
+  .mobile-full-height {
+    height: auto !important;
+  }
+}
+
+[data-portal-for="category-list"] > ul > li {
+  display: block;
+}
+
+[data-portal-for="category-list"] & li > span {
+  display: inline;
+}
+
+.noBorder {
+  border: none;
+}
+
+.conditional-metadata label {
+  border: none;
+}
+
+.scrollArea {
+  max-height: calc(100vh - 400px);
+}
+
+@media (min-height: 900px) {
+  .scrollArea {
+    max-height: 600px;
+  }
+}
+
+.simple-radio-group > *:first-child {
+  margin-top: 4px !important;
+}
+
+.multiline-toggle-wrapper > * > button {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.simple-radio-group > button {
+  min-width: 12px;
+}
+
+.sidebar-item-group-trigger {
+  button,
+  button:hover {
+    background-color: transparent;
+  }
+
+  button[data-state="open"] {
+    background-color: transparent !important;
+  }
+}
+
+a.command-menu-item {
+  display: block;
+}
+
+/**
+  TODO: Remove this when we have a way to style this via macaw.
+  - Currently there is no way in macaw to style conditions attached to attributes.
+  - You cannot easily override the current style set when used prop in Box (eg. override current backgroundColor=...)
+*/
+.command-menu-item[data-focus="true"] {
+  background-color: var(--mu-colors-background-default1-hovered) !important;
+}
+
+.command-menu tr[data-focus="true"] {
+  background-color: var(--mu-colors-background-default1-hovered) !important;
+}
+
+/* Fix PaginationRowNumberSelect styling from old macaw-ui */
+.MuiSelect-select.MuiSelect-select {
+  padding: 4px 24px 4px 8px !important;
+  border-radius: 4px !important;
+  background-color: transparent !important;
+}
+
+.MuiSelect-select.MuiSelect-select:hover,
+.MuiSelect-select.MuiSelect-select:focus {
+  background-color: var(--mu-colors-background-default1-hovered) !important;
+}
+
+/* Ensure toast notifications appear above modals */
+#toast-portal {
+  z-index: 2147483647;
+  pointer-events: none;
+}
+
+#toast-portal > * {
+  pointer-events: auto;
+}

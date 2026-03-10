@@ -1,0 +1,463 @@
+// @ts-strict-ignore
+import {
+  getAttributesDisplayData,
+  getRichTextAttributesFromMap,
+  getRichTextDataFromAttributes,
+  mergeAttributes,
+  type RichTextProps,
+} from "@dashboard/attributes/utils/data";
+import {
+  createAttributeChangeHandler,
+  createAttributeFileChangeHandler,
+  createAttributeMultiChangeHandler,
+  createAttributeReferenceAdditionalDataHandler,
+  createAttributeReferenceChangeHandler,
+  createAttributeValueReorderHandler,
+  createFetchMoreReferencesHandler,
+  createFetchReferencesHandler,
+} from "@dashboard/attributes/utils/handlers";
+import { type ChannelData, type ChannelPriceArgs } from "@dashboard/channels/utils";
+import { type AttributeInput, type AttributeInputData } from "@dashboard/components/Attributes";
+import { useExitFormDialog } from "@dashboard/components/Form/useExitFormDialog";
+import { type MetadataFormData } from "@dashboard/components/Metadata";
+import {
+  type ProductErrorWithAttributesFragment,
+  type ProductTypeQuery,
+  type SearchCategoriesQuery,
+  type SearchCollectionsQuery,
+  type SearchPagesQuery,
+  type SearchProductsQuery,
+  type SearchProductTypesQuery,
+} from "@dashboard/graphql";
+import useForm, {
+  type CommonUseFormResultWithHandlers,
+  type FormChange,
+  type FormErrors,
+  type SubmitPromise,
+} from "@dashboard/hooks/useForm";
+import useFormset, {
+  type FormsetAdditionalDataChange,
+  type FormsetChange,
+  type FormsetData,
+} from "@dashboard/hooks/useFormset";
+import useHandleFormSubmit from "@dashboard/hooks/useHandleFormSubmit";
+import { errorMessages } from "@dashboard/intl";
+import {
+  type AttributeValuesMetadata,
+  getAttributeInputFromProductType,
+  type ProductType,
+} from "@dashboard/products/utils/data";
+import {
+  createChannelsChangeHandler,
+  createChannelsPriceChangeHandler,
+  createPreorderEndDateChangeHandler,
+  createProductTypeSelectHandler,
+} from "@dashboard/products/utils/handlers";
+import {
+  validateCostPrice,
+  validatePrice,
+  validateProductCreateData,
+} from "@dashboard/products/utils/validation";
+import { PRODUCT_CREATE_FORM_ID } from "@dashboard/products/views/ProductCreate/consts";
+import { type FetchMoreProps, type RelayToFlat, type ReorderEvent } from "@dashboard/types";
+import createMultiselectChangeHandler from "@dashboard/utils/handlers/multiselectChangeHandler";
+import createSingleAutocompleteSelectHandler from "@dashboard/utils/handlers/singleAutocompleteSelectChangeHandler";
+import useMetadataChangeTrigger from "@dashboard/utils/metadata/useMetadataChangeTrigger";
+import { RichTextContext } from "@dashboard/utils/richText/context";
+import { useMultipleRichText } from "@dashboard/utils/richText/useMultipleRichText";
+import useRichText from "@dashboard/utils/richText/useRichText";
+import { type OutputData } from "@editorjs/editorjs";
+import { type Option } from "@saleor/macaw-ui-next";
+import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useState } from "react";
+import { useIntl } from "react-intl";
+
+import { type ProductStockFormsetData, type ProductStockInput } from "../ProductStocks";
+
+export interface ProductCreateFormData extends MetadataFormData {
+  category: string;
+  channelListings: ChannelData[];
+  collections: Option[];
+  description: OutputData;
+  isAvailable: boolean;
+  name: string;
+  productType: ProductType;
+  rating: number;
+  seoDescription: string;
+  seoTitle: string;
+  sku: string;
+  slug: string;
+  stockQuantity: number;
+  trackInventory: boolean;
+  isPreorder: boolean;
+  globalThreshold: string;
+  globalSoldUnits: number;
+  hasPreorderEndDate: boolean;
+  preorderEndDateTime: string;
+  weight: string;
+  taxClassId: string;
+}
+export interface ProductCreateData extends ProductCreateFormData {
+  attributes: AttributeInput[];
+  attributesWithNewFileValue: FormsetData<null, File>;
+  stocks: ProductStockInput[];
+}
+
+export interface ProductCreateHandlers
+  extends Record<
+      | "changeMetadata"
+      | "selectCategory"
+      | "selectCollection"
+      | "selectProductType"
+      | "selectTaxClass",
+      FormChange
+    >,
+    Record<"changeStock" | "selectAttribute" | "selectAttributeMultiple", FormsetChange<string>>,
+    Record<"changeChannelPrice", (id: string, data: ChannelPriceArgs) => void>,
+    Record<
+      "changeChannels",
+      (id: string, data: Omit<ChannelData, "name" | "price" | "currency" | "id">) => void
+    >,
+    Record<"selectAttributeReference", FormsetChange<string[]>>,
+    Record<"selectAttributeFile", FormsetChange<File>>,
+    Record<"reorderAttributeValue", FormsetChange<ReorderEvent>>,
+    Record<"addStock", (id: string, label: string) => void>,
+    Record<"deleteStock", (id: string) => void> {
+  changePreorderEndDate: FormChange;
+  fetchReferences: (value: string) => void;
+  fetchMoreReferences: FetchMoreProps;
+  selectAttributeReferenceAdditionalData: FormsetAdditionalDataChange<AttributeValuesMetadata[]>;
+}
+interface UseProductCreateFormOutput
+  extends CommonUseFormResultWithHandlers<ProductCreateData, ProductCreateHandlers>,
+    RichTextProps {
+  disabled: boolean;
+  formErrors: FormErrors<ProductCreateData>;
+  validationErrors: ProductErrorWithAttributesFragment[];
+}
+
+type UseProductCreateFormRenderProps = Omit<UseProductCreateFormOutput, "richText">;
+
+interface UseProductCreateFormOpts
+  extends Record<"categories" | "collections" | "taxClasses", Option[]> {
+  setSelectedCategory: Dispatch<SetStateAction<string>>;
+  setSelectedCollections: Dispatch<SetStateAction<Option[]>>;
+  setSelectedTaxClass: Dispatch<SetStateAction<string>>;
+  setChannels: (channels: ChannelData[]) => void;
+  selectedCollections: Option[];
+  productTypes: RelayToFlat<SearchProductTypesQuery["search"]>;
+  currentChannels: ChannelData[];
+  referencePages: RelayToFlat<SearchPagesQuery["search"]>;
+  referenceProducts: RelayToFlat<SearchProductsQuery["search"]>;
+  referenceCollections: RelayToFlat<SearchCollectionsQuery["search"]>;
+  referenceCategories: RelayToFlat<SearchCategoriesQuery["search"]>;
+  fetchReferencePages?: (data: string) => void;
+  fetchMoreReferencePages?: FetchMoreProps;
+  fetchReferenceProducts?: (data: string) => void;
+  fetchMoreReferenceProducts?: FetchMoreProps;
+  fetchReferenceCollections?: (data: string) => void;
+  fetchMoreReferenceCollections?: FetchMoreProps;
+  fetchReferenceCategories?: (data: string) => void;
+  fetchMoreReferenceCategories?: FetchMoreProps;
+  assignReferencesAttributeId?: string;
+  selectedProductType?: ProductTypeQuery["productType"];
+  onSelectProductType: (productTypeId: string) => void;
+}
+
+interface ProductCreateFormProps extends UseProductCreateFormOpts {
+  children: (props: UseProductCreateFormRenderProps) => ReactNode;
+  initial?: Partial<ProductCreateFormData>;
+  onSubmit: (data: ProductCreateData) => SubmitPromise;
+  loading: boolean;
+}
+
+function useProductCreateForm(
+  initial: Partial<ProductCreateFormData>,
+  onSubmit: (data: ProductCreateData) => SubmitPromise,
+  loading: boolean,
+  opts: UseProductCreateFormOpts,
+): UseProductCreateFormOutput {
+  const intl = useIntl();
+  const [validationErrors, setValidationErrors] = useState<ProductErrorWithAttributesFragment[]>(
+    [],
+  );
+  const defaultInitialFormData: ProductCreateFormData & Record<"productType", string> = {
+    category: "",
+    channelListings: opts.currentChannels,
+    collections: [],
+    description: null,
+    isAvailable: false,
+    metadata: [],
+    name: "",
+    privateMetadata: [],
+    productType: null,
+    rating: 0,
+    seoDescription: "",
+    seoTitle: "",
+    sku: "",
+    slug: "",
+    stockQuantity: null,
+    taxClassId: "",
+    trackInventory: false,
+    weight: "",
+    globalSoldUnits: 0,
+    globalThreshold: "",
+    isPreorder: false,
+    hasPreorderEndDate: false,
+    preorderEndDateTime: "",
+  };
+  const form = useForm(
+    {
+      ...initial,
+      ...defaultInitialFormData,
+    },
+    undefined,
+    { confirmLeave: true, formId: PRODUCT_CREATE_FORM_ID },
+  );
+  const { triggerChange, toggleValues, handleChange, data: formData, formId } = form;
+  const attributes = useFormset<AttributeInputData>(
+    opts.selectedProductType ? getAttributeInputFromProductType(opts.selectedProductType) : [],
+  );
+  const { getters: attributeRichTextGetters, getValues: getAttributeRichTextValues } =
+    useMultipleRichText({
+      initial: getRichTextDataFromAttributes(attributes.data),
+      triggerChange,
+    });
+  const attributesWithNewFileValue = useFormset<null, File>([]);
+  const stocks = useFormset<ProductStockFormsetData>([]);
+  const richText = useRichText({
+    initial: null,
+    triggerChange,
+  });
+  const { makeChangeHandler: makeMetadataChangeHandler } = useMetadataChangeTrigger();
+  const handleCollectionSelect = createMultiselectChangeHandler(
+    toggleValues,
+    opts.setSelectedCollections,
+  );
+  const handleCategorySelect = createSingleAutocompleteSelectHandler(
+    handleChange,
+    opts.setSelectedCategory,
+    opts.categories,
+  );
+  const handleAttributeChange = createAttributeChangeHandler(attributes, triggerChange);
+  const handleAttributeMultiChange = createAttributeMultiChangeHandler(
+    attributes.change,
+    attributes.data,
+    triggerChange,
+  );
+  const handleAttributeReferenceChange = createAttributeReferenceChangeHandler(
+    attributes,
+    triggerChange,
+  );
+  const handleAttributeMetadataChange = createAttributeReferenceAdditionalDataHandler(
+    attributes,
+    triggerChange,
+  );
+  const handleFetchReferences = createFetchReferencesHandler(
+    attributes.data,
+    opts.assignReferencesAttributeId,
+    opts.fetchReferencePages,
+    opts.fetchReferenceProducts,
+    opts.fetchReferenceCategories,
+    opts.fetchReferenceCollections,
+  );
+  const handleFetchMoreReferences = createFetchMoreReferencesHandler(
+    attributes.data,
+    opts.assignReferencesAttributeId,
+    opts.fetchMoreReferencePages,
+    opts.fetchMoreReferenceProducts,
+    opts.fetchMoreReferenceCategories,
+    opts.fetchMoreReferenceCollections,
+  );
+  const handleAttributeFileChange = createAttributeFileChangeHandler(
+    attributes.change,
+    attributesWithNewFileValue.data,
+    attributesWithNewFileValue.add,
+    attributesWithNewFileValue.change,
+    triggerChange,
+  );
+  const handleAttributeValueReorder = createAttributeValueReorderHandler(
+    attributes.change,
+    attributes.data,
+    triggerChange,
+  );
+  const handleProductTypeSelect = createProductTypeSelectHandler(
+    opts.onSelectProductType,
+    triggerChange,
+  );
+  const handleStockChange: FormsetChange<string> = (id, value) => {
+    triggerChange();
+    stocks.change(id, value);
+  };
+  const handleStockAdd = (id: string, label: string) => {
+    triggerChange();
+    stocks.add({
+      data: {
+        quantityAllocated: 0,
+      },
+      id,
+      label,
+      value: "0",
+    });
+  };
+  const handleStockDelete = (id: string) => {
+    triggerChange();
+    stocks.remove(id);
+  };
+  const handleTaxClassSelect = createSingleAutocompleteSelectHandler(
+    handleChange,
+    opts.setSelectedTaxClass,
+    opts.taxClasses,
+  );
+  const changeMetadata = makeMetadataChangeHandler(handleChange);
+  const handleChannelsChange = createChannelsChangeHandler(
+    opts.currentChannels,
+    opts.setChannels,
+    triggerChange,
+  );
+  const handleChannelPriceChange = createChannelsPriceChangeHandler(
+    opts.currentChannels,
+    opts.setChannels,
+    triggerChange,
+  );
+  const handlePreorderEndDateChange = createPreorderEndDateChangeHandler(
+    form,
+    triggerChange,
+    intl.formatMessage(errorMessages.preorderEndDateInFutureErrorText),
+  );
+  const data: ProductCreateData = {
+    ...formData,
+    attributes: getAttributesDisplayData(attributes.data, attributesWithNewFileValue.data, {
+      pages: opts.referencePages,
+      products: opts.referenceProducts,
+      collections: opts.referenceCollections,
+      categories: opts.referenceCategories,
+    }),
+    attributesWithNewFileValue: attributesWithNewFileValue.data,
+    description: null,
+    productType: opts.selectedProductType,
+    stocks: stocks.data,
+  };
+  const getData = async (): Promise<ProductCreateData> => ({
+    ...data,
+    description: await richText.getValue(),
+    attributes: mergeAttributes(
+      attributes.data,
+      getRichTextAttributesFromMap(attributes.data, await getAttributeRichTextValues()),
+    ),
+  });
+  const handleSubmit = async (data: ProductCreateData) => {
+    const errors = validateProductCreateData(data);
+
+    setValidationErrors(errors);
+
+    if (errors.length) {
+      return errors;
+    }
+
+    return onSubmit(data);
+  };
+  const handleFormSubmit = useHandleFormSubmit({
+    formId,
+    onSubmit: handleSubmit,
+  });
+  const submit = async () => {
+    const errors = await handleFormSubmit(await getData());
+
+    if (errors.length) {
+      setIsSubmitDisabled(isSubmitDisabled);
+      setIsDirty(true);
+    } else {
+      // Clear dirty state on successful submission
+      setIsDirty(false);
+    }
+
+    return errors;
+  };
+  const { setExitDialogSubmitRef, setIsSubmitDisabled, setIsDirty } = useExitFormDialog({
+    formId: PRODUCT_CREATE_FORM_ID,
+  });
+
+  useEffect(() => setExitDialogSubmitRef(submit), [submit]);
+
+  const isValid = () => {
+    if (!data.name || !data.productType) {
+      return false;
+    }
+
+    if (data.isPreorder && data.hasPreorderEndDate && !!form.errors.preorderEndDateTime) {
+      return false;
+    }
+
+    if (opts.selectedProductType?.hasVariants) {
+      return true;
+    }
+
+    const hasInvalidChannelListingPrices = data.channelListings.some(
+      channel => validatePrice(channel.price) || validateCostPrice(channel.costPrice),
+    );
+
+    if (hasInvalidChannelListingPrices) {
+      return false;
+    }
+
+    return true;
+  };
+  const isSaveDisabled = loading || !onSubmit;
+  const isSubmitDisabled = isSaveDisabled || !isValid();
+
+  useEffect(() => {
+    setIsSubmitDisabled(isSubmitDisabled);
+  }, [isSubmitDisabled]);
+
+  return {
+    change: handleChange,
+    data,
+    disabled: isSaveDisabled,
+    formErrors: form.errors,
+    validationErrors,
+    handlers: {
+      addStock: handleStockAdd,
+      changeChannelPrice: handleChannelPriceChange,
+      changeChannels: handleChannelsChange,
+      changeMetadata,
+      changeStock: handleStockChange,
+      changePreorderEndDate: handlePreorderEndDateChange,
+      deleteStock: handleStockDelete,
+      fetchMoreReferences: handleFetchMoreReferences,
+      fetchReferences: handleFetchReferences,
+      reorderAttributeValue: handleAttributeValueReorder,
+      selectAttribute: handleAttributeChange,
+      selectAttributeFile: handleAttributeFileChange,
+      selectAttributeMultiple: handleAttributeMultiChange,
+      selectAttributeReference: handleAttributeReferenceChange,
+      selectAttributeReferenceAdditionalData: handleAttributeMetadataChange,
+      selectCategory: handleCategorySelect,
+      selectCollection: handleCollectionSelect,
+      selectProductType: handleProductTypeSelect,
+      selectTaxClass: handleTaxClassSelect,
+    },
+    submit,
+    isSaveDisabled,
+    richText,
+    attributeRichTextGetters,
+  };
+}
+
+const ProductCreateForm = ({
+  children,
+  initial,
+  onSubmit,
+  loading,
+  ...rest
+}: ProductCreateFormProps) => {
+  const { richText, ...props } = useProductCreateForm(initial || {}, onSubmit, loading, rest);
+
+  return (
+    <form onSubmit={props.submit}>
+      <RichTextContext.Provider value={richText}>{children(props)}</RichTextContext.Provider>
+    </form>
+  );
+};
+
+ProductCreateForm.displayName = "ProductCreateForm";
+export default ProductCreateForm;

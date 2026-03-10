@@ -1,0 +1,27 @@
+// @ts-strict-ignore
+import { hasAllPermissions, hasAnyPermissions } from "@dashboard/auth/misc";
+import { type PermissionEnum, type UserFragment } from "@dashboard/graphql";
+import { type IntlShape } from "react-intl";
+
+import { createConfigurationMenu } from "./createConfigurationMenu";
+import { type MenuItem } from "./types";
+
+export const getConfigMenuItemsPermissions = (intl: IntlShape): PermissionEnum[] =>
+  createConfigurationMenu(intl)
+    .reduce(
+      (prev, { menuItems }) => [...prev, ...menuItems.map(({ permissions }) => permissions)],
+      [],
+    )
+    .flat();
+
+export const hasUserMenuItemPermissions = (menuItem: MenuItem, user: UserFragment): boolean => {
+  if (menuItem.permissions) {
+    if (menuItem.requireAllPermissions) {
+      return hasAllPermissions(menuItem.permissions, user);
+    }
+
+    return hasAnyPermissions(menuItem.permissions, user);
+  }
+
+  return true;
+};

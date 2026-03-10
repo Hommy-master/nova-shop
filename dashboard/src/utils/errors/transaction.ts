@@ -1,0 +1,90 @@
+import {
+  TransactionCreateErrorCode,
+  type TransactionCreateErrorFragment,
+  TransactionRequestActionErrorCode,
+  type TransactionRequestActionErrorFragment,
+} from "@dashboard/graphql";
+import { defineMessages, type IntlShape } from "react-intl";
+
+import { getCommonFormFieldErrorMessage } from "./common";
+
+export const transactionRequestMessages = defineMessages({
+  missingWebhook: {
+    defaultMessage:
+      "No extension (app or plugin) is configured to handle requested transaction action",
+    id: "BxuhWZ",
+  },
+  notFound: {
+    defaultMessage: "Transaction wasn't found",
+    id: "B06DG8",
+  },
+  refundSuccess: {
+    defaultMessage: "Refund request sent to payment provider",
+    id: "CQTTke",
+  },
+  chargeSuccess: {
+    defaultMessage: "Capture request sent to payment provider",
+    id: "fqXQq6",
+  },
+  cancelSuccess: {
+    defaultMessage: "Cancel request sent to payment provider",
+    id: "5oVmhu",
+  },
+});
+
+export function getOrderTransactionErrorMessage(
+  err: TransactionRequestActionErrorFragment,
+  intl: IntlShape,
+): string {
+  if (err) {
+    switch (err.code) {
+      case TransactionRequestActionErrorCode.MISSING_TRANSACTION_ACTION_REQUEST_WEBHOOK:
+        return intl.formatMessage(transactionRequestMessages.missingWebhook);
+      case TransactionRequestActionErrorCode.NOT_FOUND:
+        return intl.formatMessage(transactionRequestMessages.notFound);
+    }
+
+    return getCommonFormFieldErrorMessage(err, intl) || "";
+  }
+
+  return "";
+}
+
+export const transactionCreateMessages = defineMessages({
+  notFound: {
+    defaultMessage: "Cannot create transaction to non-existing order",
+    id: "aKSUWR",
+  },
+  incorrectCurrency: {
+    defaultMessage: "Invalid currency used to create transaction",
+    id: "/eWPsp",
+  },
+  unique: {
+    defaultMessage: "Transaction is not unique",
+    id: "Vtjlpw",
+  },
+  success: {
+    defaultMessage: "Manual transaction ({amount}) was created",
+    id: "tmrBDK",
+  },
+});
+
+export function getTransactionCreateErrorMessage(
+  err: TransactionCreateErrorFragment,
+  intl: IntlShape,
+): string {
+  if (err) {
+    switch (err.code) {
+      case TransactionCreateErrorCode.NOT_FOUND:
+        return intl.formatMessage(transactionCreateMessages.notFound);
+      case TransactionCreateErrorCode.UNIQUE:
+        return intl.formatMessage(transactionCreateMessages.unique);
+      case TransactionCreateErrorCode.INCORRECT_CURRENCY:
+        return intl.formatMessage(transactionCreateMessages.incorrectCurrency);
+    }
+
+    return getCommonFormFieldErrorMessage(err, intl) || "";
+  }
+
+  return "";
+}

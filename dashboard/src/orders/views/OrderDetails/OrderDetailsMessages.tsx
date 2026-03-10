@@ -1,0 +1,445 @@
+// @ts-strict-ignore
+import { handleNestedMutationErrors } from "@dashboard/auth/utils";
+import { formatMoney } from "@dashboard/components/Money";
+import messages from "@dashboard/containers/BackgroundTasks/messages";
+import {
+  type CreateManualTransactionCaptureMutation,
+  type InvoiceEmailSendMutation,
+  type InvoiceRequestMutation,
+  type OrderCancelMutation,
+  type OrderCaptureMutation,
+  type OrderDraftCancelMutation,
+  type OrderDraftFinalizeMutation,
+  type OrderDraftUpdateMutation,
+  OrderErrorCode,
+  type OrderFulfillmentApproveMutation,
+  type OrderFulfillmentCancelMutation,
+  type OrderFulfillmentUpdateTrackingMutation,
+  type OrderLineDeleteMutation,
+  type OrderLinesAddMutation,
+  type OrderLineUpdateMutation,
+  type OrderMarkAsPaidMutation,
+  type OrderNoteAddMutation,
+  type OrderNoteUpdateMutation,
+  type OrderShippingMethodUpdateMutation,
+  type OrderTransactionRequestActionMutation,
+  type OrderUpdateMutation,
+  type OrderVoidMutation,
+  TransactionActionEnum,
+} from "@dashboard/graphql";
+import useLocale from "@dashboard/hooks/useLocale";
+import useNavigator from "@dashboard/hooks/useNavigator";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
+import getOrderErrorMessage from "@dashboard/utils/errors/order";
+import {
+  getOrderTransactionErrorMessage,
+  getTransactionCreateErrorMessage,
+  transactionCreateMessages,
+  transactionRequestMessages as transactionMessages,
+} from "@dashboard/utils/errors/transaction";
+import createDialogActionHandlers from "@dashboard/utils/handlers/dialogActionHandlers";
+import type * as React from "react";
+import { useIntl } from "react-intl";
+
+import { orderUrl, type OrderUrlQueryParams } from "../../urls";
+
+interface OrderDetailsMessages {
+  children: (props: {
+    handleDraftCancel: (data: OrderDraftCancelMutation) => void;
+    handleDraftFinalize: (data: OrderDraftFinalizeMutation) => void;
+    handleDraftUpdate: (data: OrderDraftUpdateMutation) => void;
+    handleNoteAdd: (data: OrderNoteAddMutation) => void;
+    handleNoteUpdate: (data: OrderNoteUpdateMutation) => void;
+    handleOrderCancel: (data: OrderCancelMutation) => void;
+    handleOrderFulfillmentApprove: (data: OrderFulfillmentApproveMutation) => void;
+    handleOrderFulfillmentCancel: (data: OrderFulfillmentCancelMutation) => void;
+    handleOrderFulfillmentUpdate: (data: OrderFulfillmentUpdateTrackingMutation) => void;
+    handleOrderLinesAdd: (data: OrderLinesAddMutation) => void;
+    handleOrderLineDelete: (data: OrderLineDeleteMutation) => void;
+    handleOrderLineUpdate: (data: OrderLineUpdateMutation) => void;
+    handleOrderMarkAsPaid: (data: OrderMarkAsPaidMutation) => void;
+    handleOrderVoid: (data: OrderVoidMutation) => void;
+    handlePaymentCapture: (data: OrderCaptureMutation) => void;
+    handleShippingMethodUpdate: (data: OrderShippingMethodUpdateMutation) => void;
+    handleUpdate: (data: OrderUpdateMutation) => void;
+    handleInvoiceGeneratePending: (data: InvoiceRequestMutation) => void;
+    handleInvoiceGenerateFinished: (data: InvoiceRequestMutation) => void;
+    handleInvoiceSend: (data: InvoiceEmailSendMutation) => void;
+    handleTransactionAction: (data: OrderTransactionRequestActionMutation) => void;
+    handleAddManualTransaction: (data: CreateManualTransactionCaptureMutation) => void;
+  }) => React.ReactElement;
+  id: string;
+  params: OrderUrlQueryParams;
+}
+
+export const OrderDetailsMessages = ({ children, id, params }: OrderDetailsMessages) => {
+  const navigate = useNavigator();
+  const notify = useNotifier();
+  const intl = useIntl();
+  const { locale } = useLocale();
+  const [, closeModal] = createDialogActionHandlers(
+    navigate,
+    params => orderUrl(id, params),
+    params,
+  );
+  const handlePaymentCapture = (data: OrderCaptureMutation) => {
+    const errs = data.orderCapture?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "t1Bd7E",
+          defaultMessage: "Payment captured",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleOrderMarkAsPaid = (data: OrderMarkAsPaidMutation) => {
+    const errs = data.orderMarkAsPaid?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "lL1HTg",
+          defaultMessage: "Order marked as paid",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleOrderCancel = (data: OrderCancelMutation) => {
+    const errs = data.orderCancel?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "0ix6PR",
+          defaultMessage: "Order cancelled",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleDraftCancel = (data: OrderDraftCancelMutation) => {
+    const errs = data.draftOrderDelete?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "0ix6PR",
+          defaultMessage: "Order cancelled",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleOrderVoid = (data: OrderVoidMutation) => {
+    const errs = data.orderVoid?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "S6zKcD",
+          defaultMessage: "Payment voided",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleNoteAdd = (data: OrderNoteAddMutation) => {
+    const errs = data.orderNoteAdd?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "hwYzY9",
+          defaultMessage: "Note added",
+        }),
+      });
+    }
+  };
+  const handleNoteUpdate = (data: OrderNoteUpdateMutation) => {
+    const errs = data.orderNoteUpdate?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "gfRbEV",
+          defaultMessage: "Note updated",
+        }),
+      });
+    }
+  };
+  const handleUpdate = (data: OrderUpdateMutation) => {
+    const errs = data.orderUpdate?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "hASogc",
+          defaultMessage: "Order updated",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleDraftUpdate = (data: OrderDraftUpdateMutation) => {
+    const errs = data.draftOrderUpdate?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "hASogc",
+          defaultMessage: "Order updated",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleShippingMethodUpdate = (data: OrderShippingMethodUpdateMutation) => {
+    const errs = data.orderUpdateShipping?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "e61nVn",
+          defaultMessage: "Shipping updated",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleOrderLineDelete = (data: OrderLineDeleteMutation) => {
+    const errs = data.orderLineDelete?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "9OtpHt",
+          defaultMessage: "Order line deleted",
+        }),
+      });
+    }
+  };
+  const handleOrderLinesAdd = (data: OrderLinesAddMutation) => {
+    const errs = data.orderLinesCreate?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "HlCkMT",
+          defaultMessage: "Order line added",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleOrderLineUpdate = (data: OrderLineUpdateMutation) => {
+    const errs = data.orderLineUpdate?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "Fn3bE0",
+          defaultMessage: "Order line updated",
+        }),
+      });
+    } else {
+      errs.forEach(error =>
+        notify({
+          status: "error",
+          text: getOrderErrorMessage(error, intl),
+        }),
+      );
+    }
+  };
+  const handleOrderFulfillmentApprove = (data: OrderFulfillmentApproveMutation) => {
+    const errs = data.orderFulfillmentApprove?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "spjKeI",
+          defaultMessage: "Fulfillment approved",
+        }),
+      });
+      closeModal();
+    } else {
+      if (!errs.every(err => err.code === OrderErrorCode.INSUFFICIENT_STOCK)) {
+        handleNestedMutationErrors({ data, intl, notify });
+      }
+    }
+  };
+  const handleOrderFulfillmentCancel = (data: OrderFulfillmentCancelMutation) => {
+    const errs = data.orderFulfillmentCancel?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "cNXv4f",
+          defaultMessage: "Fulfillment cancelled",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleOrderFulfillmentUpdate = (data: OrderFulfillmentUpdateTrackingMutation) => {
+    const errs = data.orderFulfillmentUpdateTracking?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "w3gxER",
+          defaultMessage: "Tracking updated",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleDraftFinalize = (data: OrderDraftFinalizeMutation) => {
+    const errs = data.draftOrderComplete?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage({
+          id: "Hwp65F",
+          defaultMessage: "Draft finalized",
+        }),
+      });
+    }
+  };
+  const handleInvoiceGeneratePending = (data: InvoiceRequestMutation) => {
+    const errs = data.invoiceRequest?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        text: intl.formatMessage({
+          id: "ND5x+V",
+          defaultMessage:
+            "We’re generating the invoice you requested. Please wait a couple of moments",
+        }),
+        title: intl.formatMessage({
+          id: "PKJqcq",
+          defaultMessage: "Invoice is Generating",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleInvoiceGenerateFinished = (data: InvoiceRequestMutation) => {
+    const errs = data.invoiceRequest?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        status: "success",
+        text: intl.formatMessage(messages.invoiceGenerateFinishedText),
+        title: intl.formatMessage(messages.invoiceGenerateFinishedTitle),
+      });
+      closeModal();
+    }
+  };
+  const handleInvoiceSend = (data: InvoiceEmailSendMutation) => {
+    const errs = data.invoiceSendNotification?.errors;
+
+    if (errs.length === 0) {
+      notify({
+        text: intl.formatMessage({
+          id: "3u+4NZ",
+          defaultMessage: "Invoice email sent",
+        }),
+      });
+      closeModal();
+    }
+  };
+  const handleTransactionAction = (data: OrderTransactionRequestActionMutation) => {
+    const {
+      transactionRequestAction: { errors },
+    } = data;
+    const isError = !!errors.length;
+
+    if (isError) {
+      notify({
+        status: "error",
+        text: getOrderTransactionErrorMessage(errors[0], intl),
+      });
+    } else {
+      const actionType = "type" in params ? params.type : undefined;
+      const successMessage =
+        {
+          [TransactionActionEnum.REFUND]: transactionMessages.refundSuccess,
+          [TransactionActionEnum.CHARGE]: transactionMessages.chargeSuccess,
+          [TransactionActionEnum.CANCEL]: transactionMessages.cancelSuccess,
+        }[actionType as TransactionActionEnum] ?? transactionMessages.refundSuccess;
+
+      notify({
+        status: "success",
+        text: intl.formatMessage(successMessage),
+      });
+      closeModal();
+    }
+  };
+  const handleAddManualTransaction = (data: CreateManualTransactionCaptureMutation) => {
+    const {
+      transactionCreate: { errors, transaction },
+    } = data;
+    const isError = !!errors.length;
+
+    if (!isError) {
+      notify({
+        status: "success",
+        text: intl.formatMessage(transactionCreateMessages.success, {
+          amount: formatMoney(transaction.chargedAmount, locale),
+        }),
+      });
+      closeModal();
+    } else {
+      notify({
+        status: "error",
+        text: getTransactionCreateErrorMessage(errors[0], intl),
+      });
+    }
+  };
+
+  return children({
+    handleDraftCancel,
+    handleDraftFinalize,
+    handleDraftUpdate,
+    handleInvoiceGenerateFinished,
+    handleInvoiceGeneratePending,
+    handleInvoiceSend,
+    handleNoteAdd,
+    handleNoteUpdate,
+    handleOrderCancel,
+    handleOrderFulfillmentApprove,
+    handleOrderFulfillmentCancel,
+    handleOrderFulfillmentUpdate,
+    handleOrderLineDelete,
+    handleOrderLineUpdate,
+    handleOrderLinesAdd,
+    handleOrderMarkAsPaid,
+    handleOrderVoid,
+    handlePaymentCapture,
+    handleShippingMethodUpdate,
+    handleUpdate,
+    handleTransactionAction,
+    handleAddManualTransaction,
+  });
+};

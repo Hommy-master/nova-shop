@@ -1,0 +1,33 @@
+import { Select } from "@dashboard/components/Select";
+import { type ChannelFragment } from "@dashboard/graphql";
+import { type ChannelProps } from "@dashboard/types";
+import { mapNodeToChoice } from "@dashboard/utils/maps";
+import { Box } from "@saleor/macaw-ui-next";
+
+interface AppChannelSelectProps extends ChannelProps {
+  channels: ChannelFragment[];
+  onChannelSelect: (id: string) => void;
+}
+
+const AppChannelSelect = ({
+  channels,
+  onChannelSelect,
+  selectedChannelId,
+}: AppChannelSelectProps) => {
+  return (
+    <Box display="flex" alignItems="center">
+      <Select
+        __width={130}
+        __height={28}
+        data-test-id="app-channel-select"
+        size="large"
+        onChange={({ target }) => onChannelSelect(target.value)}
+        value={selectedChannelId}
+        options={mapNodeToChoice(channels)}
+      />
+    </Box>
+  );
+};
+
+AppChannelSelect.displayName = "AppChannelSelect";
+export default AppChannelSelect;

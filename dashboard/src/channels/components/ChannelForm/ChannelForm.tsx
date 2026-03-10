@@ -1,0 +1,282 @@
+import { AutomaticallyCompleteCheckouts } from "@dashboard/channels/components/ChannelForm/automatic-checkout-complete/AutomaticallyCompleteCheckouts";
+import {
+  type ChannelShippingZones,
+  type ChannelWarehouses,
+} from "@dashboard/channels/pages/ChannelDetailsPage/types";
+import { DashboardCard } from "@dashboard/components/Card";
+import FormSpacer from "@dashboard/components/FormSpacer";
+import { iconSize, iconStrokeWidth } from "@dashboard/components/icons";
+import {
+  type ChannelErrorFragment,
+  type CountryCode,
+  isStagingSchema,
+  MarkAsPaidStrategyEnum,
+  type StockSettingsInput,
+  TransactionFlowStrategyEnum,
+} from "@dashboard/graphql";
+import { useClipboard } from "@dashboard/hooks/useClipboard";
+import { type ChangeEvent, type FormChange } from "@dashboard/hooks/useForm";
+import { commonMessages } from "@dashboard/intl";
+import { getFormErrors } from "@dashboard/utils/errors";
+import getChannelsErrorMessage from "@dashboard/utils/errors/channels";
+import { Box, Button, DynamicCombobox, Input, type Option, Text } from "@saleor/macaw-ui-next";
+import { Copy } from "lucide-react";
+import { FormattedMessage, useIntl } from "react-intl";
+
+import { AllowLegacyGiftCardUse } from "./AllowLegacyGiftCardUse";
+import { AllowUnpaidOrders } from "./AllowUnpaidOrders";
+import { DefaultTransactionFlowStrategy } from "./DefaultTransactionFlowStrategy";
+import { MarkAsPaid } from "./MarkAsPaid";
+import { messages } from "./messages";
+
+export interface FormData extends StockSettingsInput {
+  name: string;
+  currencyCode: string;
+  slug: string;
+  shippingZonesIdsToAdd: string[];
+  shippingZonesIdsToRemove: string[];
+  warehousesIdsToAdd: string[];
+  warehousesIdsToRemove: string[];
+  shippingZonesToDisplay: ChannelShippingZones;
+  warehousesToDisplay: ChannelWarehouses;
+  defaultCountry: CountryCode;
+  markAsPaidStrategy: MarkAsPaidStrategyEnum;
+  deleteExpiredOrdersAfter: number;
+  allowUnpaidOrders: boolean;
+  defaultTransactionFlowStrategy: TransactionFlowStrategyEnum;
+  automaticallyCompleteCheckouts: boolean;
+  automaticCompletionDelay: number | string | null;
+  automaticCompletionCutOffDate: string;
+  automaticCompletionCutOffTime: string;
+  allowLegacyGiftCardUse?: boolean;
+}
+
+interface ChannelFormProps {
+  data: FormData;
+  disabled: boolean;
+  currencyCodes?: Option[];
+  errors: ChannelErrorFragment[];
+  selectedCurrencyCode?: string;
+  selectedCountryDisplayName: string;
+  countries: Option[];
+  // Saved values from backend for automatic checkout completion warnings
+  savedAutomaticallyCompleteCheckouts: boolean;
+  savedAutomaticCompletionCutOffDate: string;
+  savedAutomaticCompletionCutOffTime: string;
+  onChange: FormChange;
+  onCurrencyCodeChange?: (event: ChangeEvent) => void;
+  onDefaultCountryChange: (event: ChangeEvent) => void;
+  onMarkAsPaidStrategyChange: () => void;
+  onTransactionFlowStrategyChange: () => void;
+  onAutomaticallyCompleteCheckoutsChange: () => void;
+  onAllowLegacyGiftCardUseChange?: () => void;
+}
+
+export const ChannelForm = ({
+  currencyCodes,
+  data,
+  disabled,
+  errors,
+  selectedCurrencyCode,
+  selectedCountryDisplayName,
+  countries,
+  savedAutomaticallyCompleteCheckouts,
+  savedAutomaticCompletionCutOffDate,
+  savedAutomaticCompletionCutOffTime,
+  onChange,
+  onCurrencyCodeChange,
+  onDefaultCountryChange,
+  onMarkAsPaidStrategyChange,
+  onTransactionFlowStrategyChange,
+  onAutomaticallyCompleteCheckoutsChange,
+  onAllowLegacyGiftCardUseChange,
+}: ChannelFormProps) => {
+  const intl = useIntl();
+  const [, copy] = useClipboard();
+  const formErrors = getFormErrors<keyof FormData, ChannelErrorFragment>(
+    [
+      "name",
+      "slug",
+      "currencyCode",
+      "defaultCountry",
+      "deleteExpiredOrdersAfter",
+      "automaticCompletionDelay",
+      "automaticCompletionCutOffDate",
+    ],
+    errors,
+  );
+  const renderCurrencySelection = currencyCodes && typeof onCurrencyCodeChange === "function";
+
+  return (
+    <>
+      <DashboardCard>
+        <DashboardCard.Header>
+          <DashboardCard.Title>
+            {intl.formatMessage(commonMessages.generalInformations)}
+          </DashboardCard.Title>
+        </DashboardCard.Header>
+        <DashboardCard.Content data-test-id="general-information">
+          <Input
+            error={!!formErrors.name}
+            helperText={getChannelsErrorMessage(formErrors?.name, intl)}
+            disabled={disabled}
+            label={intl.formatMessage(messages.channelName)}
+            name="name"
+            value={data.name}
+            onChange={onChange}
+            data-test-id="channel-name-input"
+          />
+          <FormSpacer />
+          <Input
+            data-test-id="slug-name-input"
+            error={!!formErrors.slug}
+            helperText={getChannelsErrorMessage(formErrors?.slug, intl)}
+            disabled={disabled}
+            label={intl.formatMessage(messages.channelSlug)}
+            name="slug"
+            value={data.slug}
+            onChange={onChange}
+            endAdornment={
+              <Button
+                variant="tertiary"
+                onClick={() => copy(data.slug)}
+                textTransform="uppercase"
+                icon={<Copy size={iconSize.medium} strokeWidth={iconStrokeWidth} />}
+              />
+            }
+          />
+        </DashboardCard.Content>
+      </DashboardCard>
+      <Box display="grid" __gridTemplateColumns="2fr 1fr" rowGap={2}>
+        <Text size={5} fontWeight="bold" margin={6}>
+          <FormattedMessage {...messages.channelSettings} />
+        </Text>
+        <Text size={5} fontWeight="bold" margin={6}>
+          <FormattedMessage {...messages.orderExpiration} />
+        </Text>
+        <Box paddingX={6}>
+          {renderCurrencySelection ? (
+            <DynamicCombobox
+              data-test-id="channel-currency-select-input"
+              disabled={disabled}
+              error={!!formErrors.currencyCode}
+              label={intl.formatMessage(messages.channelCurrency)}
+              helperText={getChannelsErrorMessage(formErrors?.currencyCode, intl)}
+              options={currencyCodes}
+              name="currencyCode"
+              value={{
+                label: selectedCurrencyCode ?? "",
+                value: selectedCurrencyCode ?? "",
+              }}
+              onChange={e =>
+                onCurrencyCodeChange({
+                  target: {
+                    value: e?.value ?? "",
+                    name: "currencyCode",
+                  },
+                })
+              }
+            />
+          ) : (
+            <Box display="flex" flexDirection="column">
+              <Text size={2}>
+                <FormattedMessage {...messages.selectedCurrency} />
+              </Text>
+              <Text>{data.currencyCode}</Text>
+            </Box>
+          )}
+        </Box>
+        <Text size={2} paddingX={6}>
+          <FormattedMessage {...messages.orderExpirationDescription} />
+        </Text>
+        <Box paddingX={6}>
+          <DynamicCombobox
+            data-test-id="country-select-input"
+            disabled={disabled}
+            error={!!formErrors.defaultCountry}
+            label={intl.formatMessage(messages.defaultCountry)}
+            helperText={getChannelsErrorMessage(formErrors?.defaultCountry, intl)}
+            options={countries}
+            name="defaultCountry"
+            value={{
+              label: selectedCountryDisplayName,
+              value: data.defaultCountry,
+            }}
+            onChange={v =>
+              onDefaultCountryChange({
+                target: {
+                  value: v?.value ?? "",
+                  name: "defaultCountry",
+                },
+              })
+            }
+          />
+        </Box>
+        <Box paddingX={6}>
+          <Input
+            name="deleteExpiredOrdersAfter"
+            data-test-id="delete-expired-order-input"
+            value={data.deleteExpiredOrdersAfter}
+            error={!!formErrors.deleteExpiredOrdersAfter}
+            type="number"
+            label="TTL"
+            onChange={onChange}
+            min={0}
+            max={120}
+            // TODO: Should be removed after single autocomplete
+            // select is migrated to macaw inputs
+            __height={12.5}
+          />
+        </Box>
+        <MarkAsPaid
+          isChecked={data.markAsPaidStrategy === MarkAsPaidStrategyEnum.TRANSACTION_FLOW}
+          onCheckedChange={onMarkAsPaidStrategyChange}
+          hasError={!!formErrors.markAsPaidStrategy}
+          disabled={disabled}
+        />
+        <Box />
+        <AllowUnpaidOrders
+          onChange={onChange}
+          isChecked={data.allowUnpaidOrders}
+          hasError={!!formErrors.allowUnpaidOrders}
+          disabled={disabled}
+        />
+        <Box />
+        <DefaultTransactionFlowStrategy
+          onChange={onTransactionFlowStrategyChange}
+          isChecked={
+            data.defaultTransactionFlowStrategy === TransactionFlowStrategyEnum.AUTHORIZATION
+          }
+          hasError={!!formErrors.defaultTransactionFlowStrategy}
+          disabled={disabled}
+        />
+        <Box />
+        <AutomaticallyCompleteCheckouts
+          hasError={!!formErrors.automaticCompletionDelay}
+          isChecked={data.automaticallyCompleteCheckouts}
+          disabled={disabled}
+          delay={data.automaticCompletionDelay}
+          cutOffDate={data.automaticCompletionCutOffDate}
+          cutOffTime={data.automaticCompletionCutOffTime}
+          cutOffDateError={!!formErrors.automaticCompletionCutOffDate}
+          savedIsEnabled={savedAutomaticallyCompleteCheckouts}
+          savedCutOffDate={savedAutomaticCompletionCutOffDate}
+          savedCutOffTime={savedAutomaticCompletionCutOffTime}
+          onCheckboxChange={onAutomaticallyCompleteCheckoutsChange}
+          onDelayChange={onChange}
+          onCutOffDateChange={onChange}
+          onCutOffTimeChange={onChange}
+        />
+        <Box />
+        {isStagingSchema() && (
+          <AllowLegacyGiftCardUse
+            onChange={onAllowLegacyGiftCardUseChange ? onAllowLegacyGiftCardUseChange : () => {}}
+            hasError={!!formErrors.allowLegacyGiftCardUse}
+            isChecked={data.allowLegacyGiftCardUse!}
+            disabled={disabled}
+          />
+        )}
+      </Box>
+    </>
+  );
+};

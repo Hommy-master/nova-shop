@@ -1,0 +1,91 @@
+import BackButton from "@dashboard/components/BackButton";
+import {
+  ConfirmButton,
+  type ConfirmButtonTransitionState,
+} from "@dashboard/components/ConfirmButton";
+import Form from "@dashboard/components/Form";
+import { DashboardModal } from "@dashboard/components/Modal";
+import { type MenuErrorFragment } from "@dashboard/graphql";
+import { buttonMessages } from "@dashboard/intl";
+import { getFormErrors } from "@dashboard/utils/errors";
+import getMenuErrorMessage from "@dashboard/utils/errors/menu";
+import { TextField } from "@material-ui/core";
+import { Box } from "@saleor/macaw-ui-next";
+import { FormattedMessage, useIntl } from "react-intl";
+
+interface MenuCreateDialogFormData {
+  name: string;
+}
+
+interface MenuCreateDialogProps {
+  confirmButtonState: ConfirmButtonTransitionState;
+  disabled: boolean;
+  errors: MenuErrorFragment[];
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (data: MenuCreateDialogFormData) => void;
+}
+
+const initialForm: MenuCreateDialogFormData = {
+  name: "",
+};
+const MenuCreateDialog = ({
+  confirmButtonState,
+  disabled,
+  errors,
+  onClose,
+  onConfirm,
+  open,
+}: MenuCreateDialogProps) => {
+  const intl = useIntl();
+  const formErrors = getFormErrors(["name"], errors);
+
+  return (
+    <DashboardModal onChange={onClose} open={open}>
+      <DashboardModal.Content size="sm">
+        <Form initial={initialForm} onSubmit={onConfirm}>
+          {({ change, data, submit }) => (
+            <Box display="grid" gap={6}>
+              <DashboardModal.Header data-test-id="create-menu-dialog-title">
+                <FormattedMessage
+                  id="pSb46V"
+                  defaultMessage="Create structure"
+                  description="dialog header"
+                />
+              </DashboardModal.Header>
+
+              <TextField
+                data-test-id="menu-name-input"
+                disabled={disabled}
+                error={!!formErrors.name}
+                fullWidth
+                helperText={getMenuErrorMessage(formErrors.name, intl)}
+                label={intl.formatMessage({
+                  id: "5KS3f4",
+                  defaultMessage: "Structure title",
+                })}
+                name={"name" as keyof MenuCreateDialogFormData}
+                value={data.name}
+                onChange={change}
+              />
+
+              <DashboardModal.Actions>
+                <BackButton onClick={onClose} />
+                <ConfirmButton
+                  transitionState={confirmButtonState}
+                  onClick={submit}
+                  data-test-id="submit"
+                >
+                  <FormattedMessage {...buttonMessages.save} />
+                </ConfirmButton>
+              </DashboardModal.Actions>
+            </Box>
+          )}
+        </Form>
+      </DashboardModal.Content>
+    </DashboardModal>
+  );
+};
+
+MenuCreateDialog.displayName = "MenuCreateDialog";
+export default MenuCreateDialog;

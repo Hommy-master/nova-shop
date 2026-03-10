@@ -1,0 +1,56 @@
+import { iconSize, iconStrokeWidthBySize } from "@dashboard/components/icons";
+import { IconButton } from "@saleor/macaw-ui";
+import { EllipsisVertical } from "lucide-react";
+
+import CardMenu, { type CardMenuItem } from "../../CardMenu";
+import useStyles from "../styles";
+
+interface RowActionsProps {
+  menuItems: CardMenuItem[];
+  disabled?: boolean;
+}
+
+export const RowActions = ({ menuItems, disabled }: RowActionsProps) => {
+  const classes = useStyles({});
+  const hasSingleMenuItem = menuItems.length === 1;
+  const firstMenuItem = menuItems[0];
+  const handleIconClick = () => {
+    firstMenuItem.onSelect();
+  };
+
+  if (!menuItems.length) {
+    return null;
+  }
+
+  return (
+    <div className={classes.rowAction}>
+      {hasSingleMenuItem && firstMenuItem.Icon ? (
+        <IconButton
+          data-test-id="row-action-button"
+          disabled={disabled || firstMenuItem.disabled}
+          onClick={handleIconClick}
+          className={classes.ghostIcon}
+          variant="ghost"
+        >
+          {firstMenuItem.Icon}
+        </IconButton>
+      ) : (
+        <CardMenu
+          disabled={disabled}
+          autoFocusItem={false}
+          showMenuIcon={true}
+          Icon={() => (
+            <EllipsisVertical size={iconSize.small} strokeWidth={iconStrokeWidthBySize.small} />
+          )}
+          IconButtonProps={{
+            className: classes.ghostIcon,
+            variant: "ghost",
+            hoverOutline: false,
+            state: "default",
+          }}
+          menuItems={menuItems}
+        />
+      )}
+    </div>
+  );
+};

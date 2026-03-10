@@ -1,0 +1,94 @@
+// @ts-strict-ignore
+import {
+  type LanguageCodeEnum,
+  useShippingMethodTranslationDetailsQuery,
+  useUpdateShippingMethodTranslationsMutation,
+} from "@dashboard/graphql";
+import useNavigator from "@dashboard/hooks/useNavigator";
+import { useNotifier } from "@dashboard/hooks/useNotifier";
+import useShop from "@dashboard/hooks/useShop";
+import { extractMutationErrors } from "@dashboard/misc";
+import { stringifyQs } from "@dashboard/utils/urls";
+import { useIntl } from "react-intl";
+
+import TranslationsShippingMethodPage from "../components/TranslationsShippingMethodPage";
+import { type TranslationField, type TranslationInputFieldName } from "../types";
+import { getParsedTranslationInputData } from "../utils";
+
+export interface TranslationsShippingMethodQueryParams {
+  activeField: string;
+}
+interface TranslationsShippingMethodProps {
+  id: string;
+  languageCode: LanguageCodeEnum;
+  params: TranslationsShippingMethodQueryParams;
+}
+
+const TranslationsShippingMethod = ({
+  id,
+  languageCode,
+  params,
+}: TranslationsShippingMethodProps) => {
+  const navigate = useNavigator();
+  const notify = useNotifier();
+  const shop = useShop();
+  const intl = useIntl();
+  const shippingMethodTranslations = useShippingMethodTranslationDetailsQuery({
+    variables: { id, language: languageCode },
+  });
+  const [updateTranslations, updateTranslationsOpts] = useUpdateShippingMethodTranslationsMutation({
+    onCompleted: data => {
+      if (data.shippingPriceTranslate.errors.length === 0) {
+        shippingMethodTranslations.refetch();
+        notify({
+          status: "success",
+          text: intl.formatMessage({ id: "WLyKAQ", defaultMessage: "Translation saved" }),
+        });
+        navigate("?", { replace: true });
+      }
+    },
+  });
+  const onEdit = (field: string) =>
+    navigate(
+      "?" +
+        stringifyQs({
+          activeField: field,
+        }),
+      { replace: true },
+    );
+  const onDiscard = () => {
+    navigate("?", { replace: true });
+  };
+  const handleSubmit = (
+    { name: fieldName }: TranslationField<TranslationInputFieldName>,
+    data: string,
+  ) =>
+    extractMutationErrors(
+      updateTranslations({
+        variables: {
+          id,
+          input: getParsedTranslationInputData({ fieldName, data }),
+          language: languageCode,
+        },
+      }),
+    );
+  const translation = shippingMethodTranslations?.data?.translation;
+
+  return (
+    <TranslationsShippingMethodPage
+      translationId={id}
+      activeField={params.activeField}
+      disabled={shippingMethodTranslations.loading || updateTranslationsOpts.loading}
+      languages={shop?.languages || []}
+      languageCode={languageCode}
+      saveButtonState={updateTranslationsOpts.status}
+      onEdit={onEdit}
+      onDiscard={onDiscard}
+      onSubmit={handleSubmit}
+      data={translation?.__typename === "ShippingMethodTranslatableContent" ? translation : null}
+    />
+  );
+};
+
+TranslationsShippingMethod.displayName = "TranslationsShippingMethod";
+export default TranslationsShippingMethod;

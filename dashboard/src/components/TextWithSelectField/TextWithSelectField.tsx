@@ -1,0 +1,89 @@
+import { type ChangeEvent, type FormChange } from "@dashboard/hooks/useForm";
+import { Box, Input, type Option, Select, Spinner } from "@saleor/macaw-ui-next";
+
+interface CommonFieldProps {
+  name: string;
+  type?: string;
+  label?: string;
+}
+
+interface TextWithSelectFieldProps {
+  change: FormChange;
+  choices: Option[];
+  helperText?: string;
+  isError?: boolean;
+  loading?: boolean;
+  textFieldProps: CommonFieldProps & {
+    value?: string | number;
+    minValue?: number;
+  };
+  selectFieldProps: CommonFieldProps & { value: string };
+}
+
+const TextWithSelectField = ({
+  change,
+  choices,
+  loading,
+  textFieldProps,
+  selectFieldProps,
+  helperText,
+  isError,
+}: TextWithSelectFieldProps) => {
+  const {
+    name: textFieldName,
+    value: textFieldValue,
+    label: textFieldLabel,
+    type: textFieldType,
+    minValue: textFieldMinValue,
+  } = textFieldProps;
+  const { name: selectFieldName, value: selectFieldValue } = selectFieldProps;
+  const handleTextChange = (event: ChangeEvent) => {
+    const { value } = event.target;
+    const otherTarget = {
+      value: selectFieldValue,
+      name: selectFieldName,
+    };
+    // handle parsing in case of text field of type number
+    const parsedValue =
+      textFieldType === "number" && typeof value === "string" ? parseInt(value, 10) : value;
+
+    change({
+      ...event,
+      target: { ...event.target, value: parsedValue, name: event.target.name },
+    });
+    change({ target: otherTarget });
+  };
+
+  return (
+    <Box width="100%">
+      <Input
+        error={isError}
+        helperText={helperText}
+        type="number"
+        name={textFieldName}
+        label={textFieldLabel}
+        min={textFieldMinValue}
+        onChange={handleTextChange}
+        value={textFieldValue}
+        endAdornment={
+          loading ? (
+            <Box paddingTop={1} paddingRight={4}>
+              <Spinner />
+            </Box>
+          ) : (
+            <Select
+              name={selectFieldName}
+              onChange={value => change({ target: { name: selectFieldName, value } })}
+              value={selectFieldValue}
+              className="noBorder"
+              __width="50px"
+              options={choices}
+            />
+          )
+        }
+      />
+    </Box>
+  );
+};
+
+export default TextWithSelectField;

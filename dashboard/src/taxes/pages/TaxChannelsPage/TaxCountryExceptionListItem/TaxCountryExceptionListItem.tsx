@@ -1,0 +1,83 @@
+// @ts-strict-ignore
+import ControlledCheckbox from "@dashboard/components/ControlledCheckbox";
+import { iconSize, iconStrokeWidthBySize } from "@dashboard/components/icons";
+import { Select } from "@dashboard/components/Select";
+import { type TaxConfigurationUpdateInput } from "@dashboard/graphql";
+import { type FormChange } from "@dashboard/hooks/useForm";
+import { LegacyFlowWarning } from "@dashboard/taxes/components";
+import { Divider } from "@material-ui/core";
+import { ListItem, ListItemCell } from "@saleor/macaw-ui";
+import { Box, Button, type Option } from "@saleor/macaw-ui-next";
+import { Trash2 } from "lucide-react";
+
+import { useStyles } from "../styles";
+import { type TaxCountryConfiguration } from "../TaxChannelsPage";
+
+interface TaxCountryExceptionListItemProps {
+  country: TaxCountryConfiguration | undefined;
+  onDelete: () => void;
+  onChange: FormChange;
+  divider: boolean;
+  strategyChoices: Option[];
+  strategyChoicesLoading: boolean;
+}
+
+const TaxCountryExceptionListItem = ({
+  country,
+  onDelete,
+  onChange,
+  strategyChoices,
+  divider = true,
+  strategyChoicesLoading,
+}: TaxCountryExceptionListItemProps) => {
+  const classes = useStyles();
+
+  return (
+    <>
+      <ListItem hover={false} className={classes.noDivider} data-test-id="exception-country">
+        <ListItemCell>{country.country.country}</ListItemCell>
+        <ListItemCell className={classes.cell}>
+          {!strategyChoicesLoading && (
+            <LegacyFlowWarning taxCalculationStrategy={country.taxCalculationStrategy} />
+          )}
+          <Box display="flex" alignItems="center">
+            <ControlledCheckbox
+              className={classes.center}
+              checked={country.chargeTaxes}
+              name={"chargeTaxes" as keyof TaxConfigurationUpdateInput}
+              onChange={onChange}
+            />
+            <Box width="100%">
+              <Select
+                options={strategyChoices}
+                disabled={!country.chargeTaxes || strategyChoicesLoading}
+                value={country.taxCalculationStrategy}
+                name={"taxCalculationStrategy" as keyof TaxConfigurationUpdateInput}
+                onChange={onChange}
+              />
+            </Box>
+          </Box>
+        </ListItemCell>
+        <ListItemCell className={classes.center} data-test-id="display-gross-prices-checkbox">
+          <ControlledCheckbox
+            className={classes.center}
+            checked={country.displayGrossPrices}
+            name={"displayGrossPrices" as keyof TaxConfigurationUpdateInput}
+            onChange={onChange}
+          />
+        </ListItemCell>
+        <ListItemCell>
+          <Button
+            size="small"
+            onClick={onDelete}
+            variant="secondary"
+            icon={<Trash2 size={iconSize.small} strokeWidth={iconStrokeWidthBySize.small} />}
+          />
+        </ListItemCell>
+      </ListItem>
+      {divider && <Divider />}
+    </>
+  );
+};
+
+export default TaxCountryExceptionListItem;

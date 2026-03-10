@@ -1,0 +1,50 @@
+import { DashboardCard } from "@dashboard/components/Card";
+import { type ProductErrorFragment } from "@dashboard/graphql";
+import { type FormChange } from "@dashboard/hooks/useForm";
+import { getFormErrors } from "@dashboard/utils/errors";
+import { Input } from "@saleor/macaw-ui-next";
+import { useIntl } from "react-intl";
+
+import { messages } from "./messages";
+
+interface ProductVariantCheckoutSettingsProps {
+  data: {
+    quantityLimitPerCustomer: number | null;
+  };
+  disabled: boolean;
+  errors: ProductErrorFragment[];
+  onChange: FormChange;
+}
+
+const ProductVariantCheckoutSettings = (props: ProductVariantCheckoutSettingsProps) => {
+  const { data, disabled, errors, onChange } = props;
+  const intl = useIntl();
+  const formErrors = getFormErrors(["quantityLimitPerCustomer"], errors);
+
+  return (
+    <DashboardCard>
+      <DashboardCard.Header>
+        <DashboardCard.Title>{intl.formatMessage(messages.checkoutLimits)}</DashboardCard.Title>
+      </DashboardCard.Header>
+      <DashboardCard.Content>
+        <Input
+          data-test-id="checkout-limit-input"
+          width="100%"
+          disabled={disabled}
+          error={!!formErrors.quantityLimitPerCustomer}
+          type="number"
+          name="quantityLimitPerCustomer"
+          label={intl.formatMessage(messages.checkoutLineLimit)}
+          helperText={intl.formatMessage(messages.checkoutLimitsDescription)}
+          value={data.quantityLimitPerCustomer ? String(data.quantityLimitPerCustomer) : ""}
+          onChange={onChange}
+          min={1}
+          autoComplete="off"
+        />
+      </DashboardCard.Content>
+    </DashboardCard>
+  );
+};
+
+ProductVariantCheckoutSettings.displayName = "ProductVariantCheckoutSettings";
+export default ProductVariantCheckoutSettings;

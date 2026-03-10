@@ -1,0 +1,19 @@
+import { type AccountErrorFragment, type OrderErrorFragment } from "@dashboard/graphql";
+import getAccountErrorMessage from "@dashboard/utils/errors/account";
+import getOrderErrorMessage from "@dashboard/utils/errors/order";
+import { type IntlShape } from "react-intl";
+
+export function getErrorMessage(
+  err: AccountErrorFragment | OrderErrorFragment | undefined,
+  intl: IntlShape,
+): string | undefined {
+  if (err?.message) {
+    return err.message;
+  }
+
+  if (err?.__typename === "AccountError") {
+    return getAccountErrorMessage(err, intl);
+  }
+
+  return getOrderErrorMessage(err, intl);
+}

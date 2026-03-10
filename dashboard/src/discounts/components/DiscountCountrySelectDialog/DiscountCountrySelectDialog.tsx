@@ -1,0 +1,172 @@
+import BackButton from "@dashboard/components/BackButton";
+import Checkbox from "@dashboard/components/Checkbox";
+import {
+  ConfirmButton,
+  type ConfirmButtonTransitionState,
+} from "@dashboard/components/ConfirmButton";
+import Form from "@dashboard/components/Form";
+import Hr from "@dashboard/components/Hr";
+import { DashboardModal } from "@dashboard/components/Modal";
+import { ResponsiveTable } from "@dashboard/components/ResponsiveTable";
+import TableRowLink from "@dashboard/components/TableRowLink";
+import { type CountryWithCodeFragment } from "@dashboard/graphql";
+import { type SubmitPromise } from "@dashboard/hooks/useForm";
+import { fuzzySearch } from "@dashboard/misc";
+import { TableBody, TableCell, TextField } from "@material-ui/core";
+import { Box, Text } from "@saleor/macaw-ui-next";
+import { FormattedMessage, useIntl } from "react-intl";
+
+import { useStyles } from "./styles";
+
+interface FormData {
+  allCountries: boolean;
+  countries: string[];
+  query: string;
+}
+
+interface DiscountCountrySelectDialogProps {
+  confirmButtonState: ConfirmButtonTransitionState;
+  countries: CountryWithCodeFragment[];
+  initial: string[];
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (data: FormData) => SubmitPromise;
+  labels?: {
+    confirmBtn?: string;
+  };
+}
+
+const DiscountCountrySelectDialog = (props: DiscountCountrySelectDialogProps) => {
+  const { confirmButtonState, onClose, countries, open, initial, onConfirm, labels } = props;
+  const classes = useStyles(props);
+  const intl = useIntl();
+  const initialForm: FormData = {
+    allCountries: true,
+    countries: initial,
+    query: "",
+  };
+
+  return (
+    <DashboardModal onChange={onClose} open={open}>
+      <DashboardModal.Content size="sm">
+        <Form initial={initialForm} onSubmit={onConfirm}>
+          {({ data, change }) => {
+            const countrySelectionMap = countries.reduce(
+              (acc, country) => {
+                acc[country.code] = !!data.countries.find(
+                  selectedCountries => selectedCountries === country.code,
+                );
+
+                return acc;
+              },
+              {} as Record<string, boolean>,
+            );
+
+            return (
+              <DashboardModal.Grid
+                __gridTemplateRows="auto auto auto auto auto 1fr auto"
+                height="100%"
+              >
+                <DashboardModal.Header>
+                  <FormattedMessage
+                    id="cvVIV/"
+                    defaultMessage="Assign Countries"
+                    description="dialog header"
+                  />
+                </DashboardModal.Header>
+
+                <Text>
+                  <FormattedMessage
+                    id="dWK/Ck"
+                    defaultMessage="Choose countries, you want voucher to be limited to, from the list below"
+                  />
+                </Text>
+
+                <TextField
+                  name="query"
+                  value={data.query}
+                  onChange={event => change(event)}
+                  label={intl.formatMessage({
+                    id: "8EGagh",
+                    defaultMessage: "Filter Countries",
+                    description: "search box label",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "dGqEJ9",
+                    defaultMessage: "Search by country name",
+                    description: "search box placeholder",
+                  })}
+                  fullWidth
+                />
+
+                <Hr />
+
+                <Text fontSize={3}>
+                  <FormattedMessage
+                    id="wgA48T"
+                    defaultMessage="Countries A to Z"
+                    description="country selection"
+                  />
+                </Text>
+
+                <Box height="100%" overflowY="auto" className="scrollArea">
+                  <ResponsiveTable>
+                    <TableBody>
+                      {fuzzySearch(countries, data.query, ["country"]).map(country => {
+                        const isChecked = countrySelectionMap[country.code];
+
+                        return (
+                          <TableRowLink key={country.code}>
+                            <TableCell className={classes.wideCell}>{country.country}</TableCell>
+                            <TableCell padding="checkbox" className={classes.checkboxCell}>
+                              <Checkbox
+                                checked={!!isChecked}
+                                onChange={() =>
+                                  isChecked
+                                    ? change({
+                                        target: {
+                                          name: "countries" as keyof FormData,
+                                          value: data.countries.filter(
+                                            selectedCountries => selectedCountries !== country.code,
+                                          ),
+                                        },
+                                      } as any)
+                                    : change({
+                                        target: {
+                                          name: "countries" as keyof FormData,
+                                          value: [...data.countries, country.code],
+                                        },
+                                      } as any)
+                                }
+                              />
+                            </TableCell>
+                          </TableRowLink>
+                        );
+                      })}
+                    </TableBody>
+                  </ResponsiveTable>
+                </Box>
+
+                <DashboardModal.Actions>
+                  <BackButton onClick={onClose} />
+                  <ConfirmButton transitionState={confirmButtonState} type="submit">
+                    {labels?.confirmBtn ?? (
+                      <FormattedMessage
+                        id="zZCCqz"
+                        defaultMessage="Assign countries"
+                        description="button"
+                      />
+                    )}
+                  </ConfirmButton>
+                </DashboardModal.Actions>
+              </DashboardModal.Grid>
+            );
+          }}
+        </Form>
+      </DashboardModal.Content>
+    </DashboardModal>
+  );
+};
+
+DiscountCountrySelectDialog.displayName = "DiscountCountrySelectDialog";
+export default DiscountCountrySelectDialog;

@@ -1,0 +1,58 @@
+// @ts-strict-ignore
+import MuiCheckbox, { type CheckboxProps as MuiCheckboxProps } from "@material-ui/core/Checkbox";
+import FormHelperText from "@material-ui/core/FormHelperText";
+import { makeStyles } from "@saleor/macaw-ui";
+
+const useStyles = makeStyles(
+  theme => ({
+    error: {
+      color: theme.palette.error.main,
+    },
+  }),
+  { name: "Checkbox" },
+);
+
+type CheckboxProps = Omit<
+  MuiCheckboxProps,
+  "checkedIcon" | "color" | "icon" | "indeterminateIcon" | "classes" | "onClick"
+> & {
+  disableClickPropagation?: boolean;
+  helperText?: string;
+  error?: boolean;
+};
+
+const firefoxHandler = (event, onChange, checked) => {
+  event.preventDefault();
+  onChange(event, checked);
+};
+const Checkbox = ({ helperText, error, ...props }: CheckboxProps) => {
+  const { disableClickPropagation, ...rest } = props;
+  const classes = useStyles();
+
+  return (
+    <>
+      <MuiCheckbox
+        data-test-id="checkbox"
+        {...rest}
+        onClick={
+          disableClickPropagation
+            ? event => {
+                event.stopPropagation();
+                /*
+              Workaround for firefox
+              ref: https://bugzilla.mozilla.org/show_bug.cgi?id=62151
+            */
+                firefoxHandler(event, rest.onChange, rest.checked);
+              }
+            : undefined
+        }
+      />
+      {helperText && (
+        <FormHelperText classes={{ root: error && classes.error }}>{helperText}</FormHelperText>
+      )}
+    </>
+  );
+};
+
+Checkbox.displayName = "Checkbox";
+export default Checkbox;

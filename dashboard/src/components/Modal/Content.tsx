@@ -1,0 +1,74 @@
+import { Box, Modal, type PropsWithBox } from "@saleor/macaw-ui-next";
+import { type ReactNode } from "react";
+
+export type ContentSize = "xs" | "sm" | "md" | "lg" | "xl";
+
+type ContentProps = PropsWithBox<{
+  children: ReactNode;
+  disableAutofocus?: boolean;
+  disableEscapeKeyDown?: boolean;
+  size: ContentSize;
+}>;
+
+const sizes: Record<ContentSize, number> = {
+  xs: 444,
+  sm: 600,
+  md: 960,
+  lg: 1280,
+  xl: 1920,
+};
+
+export const Content = ({
+  children,
+  disableAutofocus,
+  disableEscapeKeyDown,
+  size,
+  ...rest
+}: ContentProps) => {
+  return (
+    <Modal.Content
+      disableAutofocus={disableAutofocus}
+      dialogContentProps={{
+        onPointerDownOutside: e => {
+          // This fixes issues when cursor was clicked on DataGrid x/y coordinates
+          // For example: when in modal clicked on "View metadata" button in DataGrid
+          e.detail.originalEvent.preventDefault();
+        },
+        onInteractOutside: e => {
+          // Prevent modal from closing when interacting with popovers (e.g., filter dropdowns)
+          // Popovers render in portals outside the modal's DOM tree, so Radix treats them as "outside"
+          const target = e.target as HTMLElement;
+
+          if (target?.closest("[data-radix-popper-content-wrapper]")) {
+            e.preventDefault();
+          }
+        },
+        onEscapeKeyDown: disableEscapeKeyDown ? e => e.preventDefault() : undefined,
+      }}
+    >
+      <Box
+        backgroundColor="default1"
+        boxShadow="defaultModal"
+        borderRadius={4}
+        position="fixed"
+        __left="50%"
+        __top="50%"
+        __transform="translate(-50%, -50%)"
+        borderStyle="solid"
+        borderWidth={1}
+        borderColor="default1"
+        padding={6}
+        __maxHeight="calc(100vh - 100px)"
+        __width="calc(100% - 64px)"
+        display="grid"
+        gap={6}
+        __maxWidth={sizes[size]}
+        overflowX="hidden"
+        overflowY="auto"
+        {...rest}
+      >
+        {children}
+      </Box>
+    </Modal.Content>
+  );
+};
