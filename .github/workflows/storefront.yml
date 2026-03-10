@@ -1,0 +1,56 @@
+name: Storefront CI
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+    tags:
+      - 'v*'  # 当推送 v 开头的 tag 时触发
+    paths:
+      - 'storefront/**'  # 仅当 storefront 目录下的文件变更时触发
+  pull_request:
+    branches: [ "main", "dev" ]
+    paths:
+      - 'storefront/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 准备代码
+        uses: actions/checkout@v4
+
+      - name: 准备打包Docker镜像的环境
+        uses: docker/setup-buildx-action@v3
+
+      # 登录到 Docker Hub
+      - name: 登录Docker Hub
+        if: github.event_name != 'pull_request'  # PR 时不登录
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 提取标签信息
+      - name: 提取镜像标签
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/nova-shop-storefront
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # 构建并推送 Docker 镜像
+      - name: 构建并推送Docker镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: ./storefront
+          file: ./storefront/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
