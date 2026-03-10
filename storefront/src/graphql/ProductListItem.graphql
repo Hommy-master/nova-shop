@@ -1,0 +1,58 @@
+fragment ProductListItem on Product {
+	id
+	name
+	slug
+	created
+	pricing {
+		priceRange {
+			start {
+				gross {
+					amount
+					currency
+				}
+			}
+			stop {
+				gross {
+					amount
+					currency
+				}
+			}
+		}
+		priceRangeUndiscounted {
+			start {
+				gross {
+					amount
+					currency
+				}
+			}
+			stop {
+				gross {
+					amount
+					currency
+				}
+			}
+		}
+	}
+	category {
+		id
+		name
+		slug
+	}
+	thumbnail(size: 1024, format: WEBP) {
+		url
+		alt
+	}
+	variants {
+		id
+		selectionAttributes: attributes(variantSelection: VARIANT_SELECTION) {
+			attribute {
+				slug
+				name
+			}
+			values {
+				name
+				value
+			}
+		}
+	}
+}

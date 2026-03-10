@@ -1,0 +1,72 @@
+query CheckoutFind($id: ID!) {
+	checkout(id: $id) {
+		id
+		email
+		lines {
+			id
+			quantity
+			totalPrice {
+				gross {
+					amount
+					currency
+				}
+			}
+			variant {
+				product {
+					id
+					name
+					slug
+					thumbnail {
+						url
+						alt
+					}
+					category {
+						name
+					}
+				}
+				pricing {
+					price {
+						gross {
+							amount
+							currency
+						}
+					}
+					priceUndiscounted {
+						gross {
+							amount
+							currency
+						}
+					}
+				}
+				name
+				id
+				selectionAttributes: attributes(variantSelection: VARIANT_SELECTION) {
+					attribute {
+						name
+						slug
+					}
+					values {
+						name
+						value
+					}
+				}
+				nonSelectionAttributes: attributes(variantSelection: NOT_VARIANT_SELECTION) {
+					attribute {
+						name
+						slug
+					}
+					values {
+						name
+						value
+					}
+				}
+			}
+		}
+		totalPrice {
+			gross {
+				amount
+				currency
+			}
+		}
+	}
+}
