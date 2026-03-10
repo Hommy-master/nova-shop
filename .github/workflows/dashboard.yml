@@ -2,13 +2,13 @@ name: Dashboard CI
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "main" ]
     tags:
       - 'v*'  # 当推送 v 开头的 tag 时触发
     paths:
       - 'dashboard/**'  # 仅当 dashboard 目录下的文件变更时触发
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "main" ]
     paths:
       - 'dashboard/**'
 
@@ -18,63 +18,56 @@ permissions:
 
 jobs:
   build:
-    name: Build and Push Docker Image
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
       - name: 准备代码
         uses: actions/checkout@v4
 
-      - name: 准备打包Docker镜像的环境
-        uses: docker/setup-buildx-action@v3
-
-      # 登录到 Docker Hub
-      - name: 登录Docker Hub
-        if: github.event_name != 'pull_request'  # PR 时不登录
-        uses: docker/login-action@v3
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4.1.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          version: 10   # 明确指定 pnpm 大版本 (推荐)
 
-      # 提取标签信息
-      - name: 提取镜像标签
-        id: meta
-        uses: docker/metadata-action@v5
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v3
         with:
-          images: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/nova-shop-dashboard
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
+          node-version: 22
+          cache: 'pnpm'  # 自动缓存 pnpm 依赖
 
-      # 构建并推送 Docker 镜像
-      - name: 构建并推送Docker镜像
-        uses: docker/build-push-action@v5
-        with:
-          context: ./dashboard
-          file: ./dashboard/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          build-args: |
-            COMMIT_ID=${{ github.sha }}
-            PROJECT_VERSION=${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: 进入目录dashboard
+        run: cd dashboard
 
-      # 创建 GitHub Release（仅在推送 tag 时执行）
-      - name: 创建 GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: 安装依赖
+        run: pnpm install
+
+      - name: 编译
+        run: pnpm run build
+
+      - name: 检查编译结果
+        run: ls -lhR ./dist
+
+      - name: 压缩代码
+      run: |
+          # 写入commit hash到文件中
+          echo "${{ github.sha }}" > ./dist/commit_hash.txt
+          # 压缩代码
+          cd ./dist
+          tar -czvf ../dist.tar.gz ./*
+          cd ..
+
+      # 使用社区 Action 支持覆盖
+      - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          name: Dashboard ${{ github.ref_name }}
-          body: |
-            📦 Docker 镜像已推送至 Docker Hub：
-            `${{ secrets.DOCKERHUB_USERNAME }}/nova-shop-dashboard:${{ github.ref_name }}`
-
-            **Commit:** ${{ github.sha }}
-          overwrite: true
+          name: Release ${{ github.ref_name }}
+          files: dist.tar.gz
+          overwrite: true  # 覆盖已存在的Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+
+
