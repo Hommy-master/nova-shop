@@ -1,6 +1,6 @@
 services:
-  nova-shop-storefront:
-    container_name: nova-shop-storefront
+  nova-shop-dashboard:
+    container_name: nova-shop-dashboard
     restart: always
     ports:
       - 3000:3000
