@@ -1,5 +1,6 @@
 # ============================================================
 # Nova Shop - 一键部署配置
+# 前置：PostgreSQL 和 Redis 需提前完成初始化（见 README）
 # 使用方式：docker compose up -d
 # ============================================================
 
@@ -14,11 +15,11 @@ x-nova-shop-common: &nova-shop-common
     # ── 应用核心 ──────────────────────────────────
     DEBUG: "False"
     SECRET_KEY: "changeme-replace-with-a-long-random-string"  # 生产环境必须修改！
-    # ── 数据库（自动指向内部 postgres 服务）────────
-    DATABASE_URL: "postgres://saleor:saleor@postgres:5432/saleor"
-    # ── 缓存 & 消息队列（自动指向内部 redis 服务）──
-    CACHE_URL: "redis://redis:6379/0"
-    CELERY_BROKER_URL: "redis://redis:6379/1"
+    # ── 数据库（外部 PostgreSQL 服务器）────────────
+    DATABASE_URL: "postgres://nova_shop:your_password@192.168.1.100:5432/nova_shop"  # 修改为实际地址
+    # ── 缓存 & 消息队列（外部 Redis 服务器）────────
+    CACHE_URL: "redis://192.168.1.100:6379/0"          # 修改为实际地址
+    CELERY_BROKER_URL: "redis://192.168.1.100:6379/1"  # 修改为实际地址
     # ── 访问控制 ──────────────────────────────────
     ALLOWED_HOSTS: "localhost,127.0.0.1"        # 生产环境改为实际域名
     ALLOWED_CLIENT_HOSTS: "localhost,127.0.0.1" # 生产环境改为实际域名
@@ -40,11 +41,6 @@ x-nova-shop-common: &nova-shop-common
     TIP_URL: ""
     SENTRY_DSN: ""         # 填入 Sentry DSN 启用错误监控
     RSA_PRIVATE_KEY: ""    # 填入 RSA 私钥启用 JWT 非对称加密
-  depends_on:
-    postgres:
-      condition: service_healthy
-    redis:
-      condition: service_healthy
   restart: unless-stopped
 
 services:
@@ -105,51 +101,5 @@ services:
     memswap_limit: 512M
     cpus: '0.5'
 
-  # ──────────────────────────────────────────
-  # PostgreSQL 数据库
-  # ──────────────────────────────────────────
-  postgres:
-    image: postgres:15-alpine
-    container_name: nova-shop-postgres
-    environment:
-      POSTGRES_USER: "saleor"
-      POSTGRES_PASSWORD: "saleor"  # 生产环境请修改！
-      POSTGRES_DB: "saleor"
-    volumes:
-      - nova-shop-postgres:/var/lib/postgresql/data
-      - /etc/localtime:/etc/localtime:ro
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U saleor -d saleor"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    mem_limit: 1G
-    memswap_limit: 1G
-    cpus: '1.0'
-
-  # ──────────────────────────────────────────
-  # Redis - 缓存 & 消息队列
-  # ──────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    container_name: nova-shop-redis
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - nova-shop-redis:/data
-      - /etc/localtime:/etc/localtime:ro
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    mem_limit: 512M
-    memswap_limit: 512M
-    cpus: '0.5'
-
 volumes:
-  nova-shop-postgres:    # PostgreSQL 数据持久化
-  nova-shop-redis:       # Redis 数据持久化
   nova-shop-media:       # 媒体文件持久化
