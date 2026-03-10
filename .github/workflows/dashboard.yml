@@ -12,8 +12,13 @@ on:
     paths:
       - 'dashboard/**'
 
+# 创建 Release 所需的内容写权限
+permissions:
+  contents: write
+
 jobs:
   build:
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
 
     steps:
@@ -52,5 +57,24 @@ jobs:
           file: ./dashboard/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            COMMIT_ID=${{ github.sha }}
+            PROJECT_VERSION=${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # 创建 GitHub Release（仅在推送 tag 时执行）
+      - name: 创建 GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Dashboard ${{ github.ref_name }}
+          body: |
+            📦 Docker 镜像已推送至 Docker Hub：
+            `${{ secrets.DOCKERHUB_USERNAME }}/nova-shop-dashboard:${{ github.ref_name }}`
+
+            **Commit:** ${{ github.sha }}
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
